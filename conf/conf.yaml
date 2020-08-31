@@ -1,0 +1,19 @@
+port: 8080  #http监听服务端口，默认8080
+default_page_size: 10  #分页单页数据条数，默认10
+jwt_secret: GCGFAetuHQDP3FCy  # jwt鉴权密码
+
+database:
+  host: mysql
+  port: 3306
+  username: root
+  password: 123456
+  prefix: wb_
+  dbname: wblog
+  debug: true
+
+redis:
+  host: redis
+  port: 6379
+  password: 123456
+  db: 0
+  prefix: wb
