@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"demo/models"
+	"databus/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )

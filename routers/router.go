@@ -1,9 +1,9 @@
 package routers
 
 import (
-	"demo/middleware/jwt"
-	"demo/routers/api"
-	"demo/routers/api/v1"
+	"databus/middleware/jwt"
+	"databus/routers/api"
+	"databus/routers/api/v1"
 	"github.com/gin-gonic/gin"
 )
 

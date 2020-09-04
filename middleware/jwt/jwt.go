@@ -1,8 +1,8 @@
 package jwt
 
 import (
-	"demo/routers/api"
-	"demo/utils"
+	"databus/routers/api"
+	"databus/utils"
 	"github.com/gin-gonic/gin"
 )
 

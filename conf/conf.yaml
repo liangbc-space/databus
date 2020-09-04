@@ -17,3 +17,8 @@ redis:
   password: 123456
   db: 0
   prefix: wb
+
+kafka:
+  broker:
+    - kafka1:9092
+  broker_address_family: "v4"   #broker是ipv4还是ipv6

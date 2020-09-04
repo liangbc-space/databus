@@ -1,9 +1,9 @@
 package v1
 
 import (
-	"demo/models"
-	"demo/routers/api"
-	"demo/utils"
+	"databus/models"
+	"databus/routers/api"
+	"databus/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strings"

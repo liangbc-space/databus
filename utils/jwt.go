@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"demo/system"
+	"databus/system"
 	"github.com/dgrijalva/jwt-go"
 	"time"
 )

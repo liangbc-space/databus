@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"demo/system"
+	"databus/system"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"reflect"

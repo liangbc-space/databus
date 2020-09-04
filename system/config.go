@@ -25,12 +25,19 @@ type RedisConfig struct {
 	Prefix   string `yaml:"prefix"`
 }
 
+/*kafka连接配置*/
+type KafkaConfig struct {
+	Broker              []string `yaml:"broker"`
+	BrokerAddressFamily string   `yaml:"broker_address_family"`
+}
+
 type Configuration struct {
 	Port            uint           `yaml:"port"`
 	DefaultPageSize uint           `yaml:"default_page_size"`
 	JWTSecret       string         `yaml:"jwt_secret"`
 	DbConfig        DatabaseConfig `yaml:"database"`
 	RedisConfig     RedisConfig    `yaml:"redis"`
+	KafkaConfig     KafkaConfig    `yaml:"kafka"`
 }
 
 const (

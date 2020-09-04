@@ -1,7 +1,7 @@
 package models
 
 import (
-	"demo/utils"
+	"databus/utils"
 	"errors"
 	"github.com/jinzhu/gorm"
 	"time"
