@@ -2,7 +2,7 @@ port: 8080  #http监听服务端口，默认8080
 default_page_size: 10  #分页单页数据条数，默认10
 jwt_secret: GCGFAetuHQDP3FCy  # jwt鉴权密码
 
-database:
+mysql:
   host: mysql
   port: 3306
   username: root
@@ -10,6 +10,10 @@ database:
   prefix: wb_
   dbname: wblog
   debug: true
+  #连接池设置
+  pool:
+    max_idle: 50  #连接池最大允许的空闲连接数
+    max_open: 100 #连接池最大连接数
 
 redis:
   host: redis
@@ -19,6 +23,6 @@ redis:
   prefix: wb
 
 kafka:
-  broker:
+  brokers:
     - kafka1:9092
   broker_address_family: "v4"   #broker是ipv4还是ipv6

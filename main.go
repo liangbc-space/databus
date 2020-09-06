@@ -2,21 +2,17 @@ package main
 
 import (
 	"databus/models"
+	mysql_elasticsearch "databus/mysql-elasticsearch"
 	"os/signal"
 	"regexp"
+	"strings"
 	"syscall"
 	//"databus/routers"
 	"databus/system"
-	"databus/utils"
 	"flag"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"os"
-)
-
-var (
-	broker, group string   = "kafka1:9092", "golang-kafka-test1"
-	topics        []string = []string{"cn01_db.z_goods_00"}
 )
 
 func init() {
@@ -38,58 +34,68 @@ func init() {
 	}
 
 	//	初始化redis连接池
-	utils.InitRedis()
+	//utils.InitRedis()
 }
 
 func main() {
 	//	释放数据库连接
 	defer models.DB.Close()
 
-	canal2()
+	mysql_elasticsearch.Run()
 
-	/*request := routers.InitRouter()
+	/*signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan,
+		os.Kill,
+		os.Interrupt,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)*/
 
-	if err := request.Run(fmt.Sprintf(":%d", system.SystemConfig.Port)); err != nil {
-		panic(err)
+	/*done := make(chan bool)
+
+	go func() {
+		run()
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		fmt.Printf("退出")
 	}*/
+
+	//request := routers.InitRouter()
+
+	//if err := request.Run(fmt.Sprintf(":%d", system.SystemConfig.Port)); err != nil {
+	//	panic(err)
+	//}
 
 }
 
 
 func canal2() {
 
-	fmt.Println()
-
-
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": broker,
-		// Avoid connecting to IPv6 brokers:
-		// This is needed for the ErrAllBrokersDown show-case below
-		// when using localhost brokers on OSX, since the OSX resolver
-		// will return the IPv6 addresses first.
-		// You typically don't need to specify this configuration property.
-		"broker.address.family": "v4",
-		"group.id":              group,
+		"bootstrap.servers":     strings.Join(system.SystemConfig.KafkaConfig.Brokers, ","),
+		"broker.address.family": system.SystemConfig.KafkaConfig.BrokerAddressFamily,
+		"group.id":              "test1",
 		"session.timeout.ms":    6000,
 		"auto.offset.reset":     "earliest",
 		"enable.auto.commit":    false,
 	})
 
-	metas,err := c.GetMetadata(nil, false,3000)
+	metas, err := c.GetMetadata(nil, false, 3000)
 	var topics []string
 	reg := regexp.MustCompile("^cn01_db.z_goods_(\\d{2})$")
-	for _,topicMetadata  := range metas.Topics{
+	for _, topicMetadata := range metas.Topics {
 		if reg.MatchString(topicMetadata.Topic) {
 			topics = append(topics, topicMetadata.Topic)
 		}
 	}
-
-	fmt.Println(len(topics))
-
-	return;
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create consumer: %s\n", err)

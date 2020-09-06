@@ -35,8 +35,8 @@ func InitDB() (*gorm.DB, error) {
 	}
 	DB.LogMode(DbConfig.Debug)
 
-	DB.DB().SetMaxIdleConns(50)  //连接池最大允许的空闲连接数，如果没有sql任务需要执行的连接数大于20，超过的连接会被连接池关闭
-	DB.DB().SetMaxOpenConns(100) //设置数据库连接池最大连接数
+	DB.DB().SetMaxIdleConns(int(DbConfig.Pool.MaxIdle)) //连接池最大允许的空闲连接数，如果没有sql任务需要执行的连接数大于20，超过的连接会被连接池关闭
+	DB.DB().SetMaxOpenConns(int(DbConfig.Pool.MaxOpen)) //设置数据库连接池最大连接数
 
 	return DB, err
 

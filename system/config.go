@@ -14,6 +14,10 @@ type DatabaseConfig struct {
 	Dbname   string `yaml:"dbname"`
 	Prefix   string `yaml:"prefix"`
 	Debug    bool   `yaml:"debug"`
+	Pool     struct {
+		MaxIdle uint `yaml:"max_idle"`
+		MaxOpen uint `yaml:"max_open"`
+	} `yaml:"pool"`
 }
 
 /*redis连接配置*/
@@ -27,7 +31,7 @@ type RedisConfig struct {
 
 /*kafka连接配置*/
 type KafkaConfig struct {
-	Broker              []string `yaml:"broker"`
+	Brokers             []string `yaml:"brokers"`
 	BrokerAddressFamily string   `yaml:"broker_address_family"`
 }
 
@@ -35,7 +39,7 @@ type Configuration struct {
 	Port            uint           `yaml:"port"`
 	DefaultPageSize uint           `yaml:"default_page_size"`
 	JWTSecret       string         `yaml:"jwt_secret"`
-	DbConfig        DatabaseConfig `yaml:"database"`
+	DbConfig        DatabaseConfig `yaml:"mysql"`
 	RedisConfig     RedisConfig    `yaml:"redis"`
 	KafkaConfig     KafkaConfig    `yaml:"kafka"`
 }
