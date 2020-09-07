@@ -13,8 +13,6 @@ import (
 
 func poolMessages() {
 
-
-
 	configMap := utils.ConsumerConfig{}
 	configMap["session.timeout.ms"] = 6000
 	configMap["auto.offset.reset"] = "earliest"
@@ -27,8 +25,6 @@ func poolMessages() {
 	consumer.Close()
 
 	done := make(chan bool)
-
-
 
 	for _, item := range topics {
 

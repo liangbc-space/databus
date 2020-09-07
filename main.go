@@ -6,7 +6,10 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
+
 	//"databus/routers"
 	"databus/system"
 	"flag"
@@ -37,7 +40,121 @@ func init() {
 	//utils.InitRedis()
 }
 
+func test1()  {
+	signalChan := make(chan os.Signal)
+	signal.Notify(signalChan, os.Kill, os.Interrupt, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	doneAll := make([]chan bool, 0)
+	for i := 1; i <= 2; i++ {
+		done := make(chan bool)
+		doneAll = append(doneAll, done)
+		go func(i int) {
+			for {
+				// for 里面必须要有一个退出的方式，这就需要传入一个退出的通知！
+				select {
+				case <-done:
+					fmt.Println("exit    ",i)
+					return
+				default:
+					/*if i == 2 {
+						time.Sleep(5 * time.Second)
+					} else {
+						time.Sleep(2 * time.Second)
+					}*/
+
+					time.Sleep(1 * time.Second)
+
+					fmt.Printf("当前值%d\n", i)
+				}
+			}
+		}(i)
+	}
+	<-signalChan
+	for _, done := range doneAll {
+		done <- true
+	}
+}
+
+type done struct {
+	c chan os.Signal
+	wg *sync.WaitGroup
+}
+
+func (done done)doneEvent()  {
+	signal.Notify(done.c, os.Kill,
+		os.Interrupt,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+		)
+
+	go func() {
+		<-done.c
+		close(done.c)
+	}()
+}
+
+func newDoneControl() *done {
+	done := done{
+		c: make(chan os.Signal),
+		wg: new(sync.WaitGroup),
+	}
+
+	done.doneEvent()
+
+	return &done
+}
+
+func test2()  {
+	signalChan := make(chan os.Signal,1)
+	signal.Notify(signalChan,
+		os.Interrupt,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,)
+
+	wg := new(sync.WaitGroup)
+
+	//done := newDoneControl()
+	for i := 1; i <= 2; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			for {
+				select {
+				case _,ok := <-signalChan:
+					fmt.Println("exit    ",i)
+					if ok {
+						close(signalChan)
+					}
+					fmt.Println("123")
+					return
+				default:
+					if i == 2 {
+						time.Sleep(5 * time.Second)
+					} else {
+						time.Sleep(2 * time.Second)
+					}
+
+					//time.Sleep(1 * time.Second)
+
+					fmt.Printf("当前值%d\n", i)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+}
+
 func main() {
+
+	test2()
+
+	return
+
 	//	释放数据库连接
 	defer models.DB.Close()
 
@@ -72,7 +189,6 @@ func main() {
 	//}
 
 }
-
 
 func canal2() {
 
