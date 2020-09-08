@@ -15,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/panjf2000/ants/v2"
 	"os"
 )
 
@@ -40,53 +41,70 @@ func init() {
 	//utils.InitRedis()
 }
 
-func test1()  {
+func test1() {
+
+	p, err := ants.NewPool(10)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Release()
+
 	signalChan := make(chan os.Signal)
-	signal.Notify(signalChan, os.Kill, os.Interrupt, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
-	doneAll := make([]chan bool, 0)
-	for i := 1; i <= 2; i++ {
-		done := make(chan bool)
-		doneAll = append(doneAll, done)
-		go func(i int) {
-			for {
-				// for 里面必须要有一个退出的方式，这就需要传入一个退出的通知！
-				select {
-				case <-done:
-					fmt.Println("exit    ",i)
-					return
-				default:
-					/*if i == 2 {
-						time.Sleep(5 * time.Second)
-					} else {
-						time.Sleep(2 * time.Second)
-					}*/
+	signal.Notify(signalChan,
+		os.Interrupt,
+		os.Kill,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+	counter := make(chan int,100)
 
-					time.Sleep(1 * time.Second)
+	wg := new(sync.WaitGroup)
 
-					fmt.Printf("当前值%d\n", i)
+	p.Submit(func() {
+		defer wg.Done()
+		for {
+
+			select {
+			case sig, ok := <-signalChan:
+				fmt.Printf("收到信号：%v\n", sig)
+				if ok {
+					close(signalChan)
 				}
+				return
+			default:
+				i1 := <-counter
+				time.Sleep(time.Second * 1)
+				fmt.Printf("当前值：%d\n", i1)
 			}
-		}(i)
+		}
+
+	})
+
+	for i := 1; i <= 5; i++ {
+		wg.Add(1)
+		counter <- i
+
 	}
-	<-signalChan
-	for _, done := range doneAll {
-		done <- true
-	}
+
+	wg.Wait()
+
 }
 
 type done struct {
-	c chan os.Signal
+	c  chan os.Signal
 	wg *sync.WaitGroup
 }
 
-func (done done)doneEvent()  {
+func (done done) doneEvent() {
 	signal.Notify(done.c, os.Kill,
 		os.Interrupt,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
-		)
+	)
 
 	go func() {
 		<-done.c
@@ -96,7 +114,7 @@ func (done done)doneEvent()  {
 
 func newDoneControl() *done {
 	done := done{
-		c: make(chan os.Signal),
+		c:  make(chan os.Signal),
 		wg: new(sync.WaitGroup),
 	}
 
@@ -105,14 +123,14 @@ func newDoneControl() *done {
 	return &done
 }
 
-func test2()  {
-	signalChan := make(chan os.Signal,1)
+func test2() {
+	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan,
 		os.Interrupt,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,
-		syscall.SIGQUIT,)
+		syscall.SIGQUIT)
 
 	wg := new(sync.WaitGroup)
 
@@ -123,8 +141,8 @@ func test2()  {
 			defer wg.Done()
 			for {
 				select {
-				case _,ok := <-signalChan:
-					fmt.Println("exit    ",i)
+				case _, ok := <-signalChan:
+					fmt.Println("exit    ", i)
 					if ok {
 						close(signalChan)
 					}
@@ -151,7 +169,7 @@ func test2()  {
 
 func main() {
 
-	test2()
+	test1()
 
 	return
 
