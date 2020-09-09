@@ -2,10 +2,12 @@ package mysql_elasticsearch
 
 import (
 	"databus/utils"
+	"encoding/json"
 	"fmt"
 	"github.com/panjf2000/ants/v2"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -50,7 +52,9 @@ func execute(args interface{}) {
 	control := argsMap["signal_control"].(*utils.SignalControl)
 
 	consumer := createConsumerInstance()
-	fmt.Printf("%p\n", consumer)
+	if err := consumer.Subscribe(topic, nil); err != nil {
+		panic(err)
+	}
 
 	defer consumer.Close()
 	defer control.Done()
@@ -62,11 +66,28 @@ func execute(args interface{}) {
 			fmt.Println("收到退出信号")
 			return
 		default:
-			messages := pullMessages(consumer, topic, 10)
 
-			for _, message := range messages {
-				fmt.Println(message.Value)
+			message := pullMessages(consumer)
+			if message == nil {
+				continue
 			}
+
+			optionData := make(map[string]interface{})
+			json.Unmarshal(message.Value, &optionData)
+			data := optionData["data"].([]interface{})
+
+			list := make([]map[string]interface{}, 0)
+			for _, item := range data {
+				item := item.(map[string]interface{})
+				goodsData := make(map[string]interface{})
+
+				goodsData["goods_id"] = item["id"]
+				goodsData["store_id"] = item["store_id"]
+				goodsData["operation_type"] = strings.ToUpper(optionData["type"].(string))
+				list = append(list, goodsData)
+			}
+
+			fmt.Println(list)
 		}
 
 	}
