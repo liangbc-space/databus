@@ -3,10 +3,12 @@ package main
 import (
 	"databus/models"
 	mysql_elasticsearch "databus/mysql-elasticsearch"
+	"databus/utils"
 	"os/signal"
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -43,12 +45,6 @@ func init() {
 
 func test1() {
 
-	p, err := ants.NewPool(10)
-	if err != nil {
-		panic(err)
-	}
-	defer p.Release()
-
 	signalChan := make(chan os.Signal)
 	signal.Notify(signalChan,
 		os.Interrupt,
@@ -58,37 +54,40 @@ func test1() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 	)
-	counter := make(chan int,100)
 
-	wg := new(sync.WaitGroup)
+	signalHandleFuc := func(control *utils.SignalControl) {
+		<-control.SignalChan
+	}
 
-	p.Submit(func() {
-		defer wg.Done()
-		for {
+	var sum uint32
+	signalControl := utils.SignalEvent(signalChan, signalHandleFuc)
 
-			select {
-			case sig, ok := <-signalChan:
-				fmt.Printf("收到信号：%v\n", sig)
-				if ok {
-					close(signalChan)
-				}
-				return
-			default:
-				i1 := <-counter
-				time.Sleep(time.Second * 1)
-				fmt.Printf("当前值：%d\n", i1)
-			}
+	p, err := ants.NewPoolWithFunc(1000, func(i interface{}) {
+		defer signalControl.Done()
+		select {
+		case <-signalControl.SignalChan:
+			return
+		default:
+			//time.Sleep(time.Millisecond * 200)
+			atomic.AddUint32(&sum, i.(uint32))
 		}
-
 	})
 
-	for i := 1; i <= 5; i++ {
-		wg.Add(1)
-		counter <- i
+	if err != nil {
+		panic(err)
+	}
+	defer p.Release()
+
+	for i := 1; i <= 1000000; i++ {
+		signalControl.Add(1)
+
+		p.Invoke(uint32(i))
 
 	}
 
-	wg.Wait()
+	signalControl.Wait()
+
+	fmt.Printf("sum：%d\n",sum)
 
 }
 
@@ -169,7 +168,7 @@ func test2() {
 
 func main() {
 
-	test1()
+	mysql_elasticsearch.Run()
 
 	return
 
