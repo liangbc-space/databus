@@ -103,7 +103,7 @@ func execute(args interface{}) {
 				getGoodsData(tableHash, list)
 				if *message.TopicPartition.Topic == "cn01_db.z_goods_00" {
 					time.Sleep(time.Second * 1)
-				}else {
+				} else {
 					time.Sleep(time.Second * 5)
 				}
 				/*bytes, _ := json.Marshal(list)
@@ -119,7 +119,10 @@ func execute(args interface{}) {
 }
 
 func getGoodsData(tableHash string, optionDatas []map[string]interface{}) {
-
+	goodsIds := make([]string, 0)
+	for _, item := range optionDatas {
+		goodsIds = append(goodsIds, item["goods_id"].(string))
+	}
 	//	查询goods
 	sql := `SELECT
 	CONCAT( CAST( g.store_id AS CHAR ), '-', CAST( g.id AS CHAR ) ) AS uniqueeid,
@@ -134,11 +137,15 @@ FROM
 	LEFT JOIN z_brand AS b ON g.brand_id = b.id
 	LEFT JOIN z_goods_category_` + tableHash + ` AS c ON g.category_id = c.id 
 WHERE
-    g.id IN({$goodsIds}) 
+    g.id IN(` + strings.Join(goodsIds, ",") + `) 
     AND g.store_id > 0
 	AND g.STATUS != -1`
 
-	users := make([]map[string]interface{}, 0)
-	models.DB = models.DB.Raw(sql).Find(&users)
-	fmt.Println(users)
+	goodsBase := new([]map[string]interface{})
+	models.DB.Raw(sql).Find(&goodsBase)
+	fmt.Println(goodsBase)
+	/*for _, goods := range goodsBase {
+		goods = goods.(map[string]interface{})
+
+	}*/
 }
