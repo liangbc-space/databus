@@ -3,12 +3,23 @@ default_page_size: 10  #分页单页数据条数，默认10
 jwt_secret: GCGFAetuHQDP3FCy  # jwt鉴权密码
 
 mysql:
-  host: mysql
+#  host: mysql
+#  port: 3306
+#  username: root
+#  password: 123456
+#  prefix: wb_
+#  dbname: wblog
+#  debug: true
+#  #连接池设置
+#  pool:
+#    max_idle: 50  #连接池最大允许的空闲连接数
+#    max_open: 100 #连接池最大连接数
+  host: rm-uf6r8e88s3r1q80p5jo.mysql.rds.aliyuncs.com
   port: 3306
-  username: root
-  password: 123456
-  prefix: wb_
-  dbname: wblog
+  username: cn01_db
+  password: lx#r858zat4bYRX
+  prefix:
+  dbname: cn01_db
   debug: true
   #连接池设置
   pool:

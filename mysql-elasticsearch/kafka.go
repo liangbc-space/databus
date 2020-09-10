@@ -14,7 +14,7 @@ func getTopics() (topics []string) {
 	consumer := createConsumerInstance()
 	defer consumer.Close()
 
-	reg := regexp.MustCompile("^cn01_db.z_goods_(\\d{2})$")
+	reg := regexp.MustCompile(`^cn01_db.z_goods_(\d{2})$`)
 	topics = consumer.GetTopics(reg)
 
 	return topics

@@ -2,6 +2,7 @@ package main
 
 import (
 	"databus/models"
+	mysql_elasticsearch "databus/mysql-elasticsearch"
 	"databus/utils"
 	"encoding/json"
 	"os/signal"
@@ -169,11 +170,11 @@ func test2() {
 func main() {
 
 	//	释放数据库连接
-	/*defer models.DB.Close()
+	defer models.DB.Close()
 
-	mysql_elasticsearch.Run()*/
+	mysql_elasticsearch.Run()
 
-	canal2()
+	//canal2()
 
 }
 
@@ -206,15 +207,6 @@ func canal2() {
 	}
 
 	fmt.Printf("Created Consumer %v\n", c)
-
-	/*c, err = kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":     strings.Join(system.SystemConfig.KafkaConfig.Brokers, ","),
-		"broker.address.family": system.SystemConfig.KafkaConfig.BrokerAddressFamily,
-		"group.id":              "test",
-		"session.timeout.ms":    6000,
-		"auto.offset.reset":     "earliest",
-		"enable.auto.commit":    false,
-	})*/
 
 
 	err = c.SubscribeTopics(topics, nil)
