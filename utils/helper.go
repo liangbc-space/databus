@@ -20,3 +20,16 @@ func Md5(str string) string {
 	hash := md5.New()
 	return hex.EncodeToString(hash.Sum([]byte(str)))
 }
+
+func RemoveRepeat(list []string) []string {
+	output := make([]string, 0)
+	m := make(map[string]interface{})
+	for _, item := range list {
+		if _, ok := m[item]; !ok && item != "" {
+			output = append(output, item)
+			m[item] = true
+		}
+	}
+
+	return output
+}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -100,7 +101,7 @@ func execute(args interface{}) {
 			}
 
 			if len(list) >= 10 {
-				getGoodsData(tableHash, list)
+				elasticsearchGoodsData(tableHash, list)
 				if *message.TopicPartition.Topic == "cn01_db.z_goods_00" {
 					time.Sleep(time.Second * 1)
 				} else {
@@ -118,34 +119,33 @@ func execute(args interface{}) {
 
 }
 
-func getGoodsData(tableHash string, optionDatas []map[string]interface{}) {
+func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface{}) {
+
+	//	获取商品的基本信息
+	goodsLists := models.GetGoods(tableHash, optionDatas)
+
 	goodsIds := make([]string, 0)
-	for _, item := range optionDatas {
-		goodsIds = append(goodsIds, item["goods_id"].(string))
+	storeIds := make([]string, 0)
+	categoryIds := make([]string,0)
+	for _, goods := range goodsLists {
+		goodsIds = append(goodsIds, strconv.Itoa(int(goods.Id)))
+		storeIds = append(storeIds, strconv.Itoa(int(goods.StoreId)))
+
+		tmp := strings.Split(goods.CategoryPath, ",")
+		categoryIds = append(categoryIds, tmp)
 	}
-	//	查询goods
-	sql := `SELECT
-	CONCAT( CAST( g.store_id AS CHAR ), '-', CAST( g.id AS CHAR ) ) AS uniqueeid,
-	g.*,
-IF
-	( g.stock_nums > 0, 1, IF ( g.is_bookable, 1, 0 ) ) AS is_instock,
-	FROM_UNIXTIME( g.create_time, '%Y%m%d' ) AS create_day,
-	b.base_name AS brand_name,
-	c.base_name AS category_name 
-FROM
-	z_goods_` + tableHash + ` g
-	LEFT JOIN z_brand AS b ON g.brand_id = b.id
-	LEFT JOIN z_goods_category_` + tableHash + ` AS c ON g.category_id = c.id 
-WHERE
-    g.id IN(` + strings.Join(goodsIds, ",") + `) 
-    AND g.store_id > 0
-	AND g.STATUS != -1`
+	goodsIds = utils.RemoveRepeat(goodsIds)
+	storeIds = utils.RemoveRepeat(storeIds)
 
-	goodsBase := new([]map[string]interface{})
-	models.DB.Raw(sql).Find(&goodsBase)
-	fmt.Println(goodsBase)
-	/*for _, goods := range goodsBase {
-		goods = goods.(map[string]interface{})
+	//  获取商品tag信息
+	goodsTags := models.GetGoodsTags(goodsIds, storeIds)
+	fmt.Println(goodsTags)
 
-	}*/
+	//  获取商品推荐信息
+	goodsRecommends := models.GetGoodsRecommends(goodsIds, storeIds)
+	fmt.Println(goodsRecommends)
+
+	//  获取商品分类信息
+
+
 }
