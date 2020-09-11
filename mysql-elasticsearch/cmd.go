@@ -132,7 +132,7 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 		storeIds = append(storeIds, strconv.Itoa(int(goods.StoreId)))
 
 		tmp := strings.Split(goods.CategoryPath, ",")
-		categoryIds = append(categoryIds, tmp)
+		categoryIds = append(categoryIds, utils.RemoveRepeat(tmp))
 	}
 	goodsIds = utils.RemoveRepeat(goodsIds)
 	storeIds = utils.RemoveRepeat(storeIds)
