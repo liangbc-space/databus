@@ -86,7 +86,9 @@ func execute(args interface{}) {
 				OptionType string      `json:"type"`
 			}
 			optionData := new(Message)
-			json.Unmarshal(message.Value, &optionData)
+			if err := json.Unmarshal(message.Value, &optionData); err != nil {
+				panic(err)
+			}
 
 			data := optionData.Data.([]interface{})
 
@@ -120,19 +122,17 @@ func execute(args interface{}) {
 }
 
 func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface{}) {
-
 	//	获取商品的基本信息
 	goodsLists := models.GetGoods(tableHash, optionDatas)
 
 	goodsIds := make([]string, 0)
 	storeIds := make([]string, 0)
-	categoryIds := make([]string,0)
+	categoryIds := make([]string, 0)
 	for _, goods := range goodsLists {
 		goodsIds = append(goodsIds, strconv.Itoa(int(goods.Id)))
 		storeIds = append(storeIds, strconv.Itoa(int(goods.StoreId)))
 
-		tmp := strings.Split(goods.CategoryPath, ",")
-		categoryIds = append(categoryIds, utils.RemoveRepeat(tmp))
+		categoryIds = append(categoryIds, strings.Split(goods.CategoryPath, ",")...)
 	}
 	goodsIds = utils.RemoveRepeat(goodsIds)
 	storeIds = utils.RemoveRepeat(storeIds)
@@ -146,6 +146,20 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 	fmt.Println(goodsRecommends)
 
 	//  获取商品分类信息
+	goodsCategories := models.GetGoodsCategories(tableHash, categoryIds)
+	fmt.Println(goodsCategories)
 
+	//  获取商品附属分类信息
+	goodsSubCategories := models.GetGoodsSubCategories(tableHash, goodsIds, storeIds)
+	fmt.Println(goodsSubCategories)
 
+	//  获取商品图片信息
+	goodsOtherImages := models.GetGoodsOtherImages(tableHash, goodsIds, storeIds)
+	fmt.Println(goodsOtherImages)
+
+	//  获取商品销量属性信息
+
+	//  获取商品属性信息
+	goodsProperties := models.GetGoodsProperties(tableHash, goodsIds, storeIds)
+	fmt.Println(goodsProperties)
 }

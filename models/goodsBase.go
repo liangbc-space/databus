@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+//	商品基础信息
 type Godos struct {
 	UniqueId          string  `gorm:"uniqueeid" json:"unique_id"`
 	Id                uint32  `gorm:"id"`
@@ -61,6 +62,7 @@ type Godos struct {
 	CategoryName      string  `gorm:"category_name"`
 }
 
+//	商品标签
 type GoodsTag struct {
 	TagId   uint32 `gorm:"tag_id"`
 	TagName uint32 `gorm:"tag_name"`
@@ -68,7 +70,8 @@ type GoodsTag struct {
 	StoreId uint32 `gorm:"store_id"`
 }
 
-type GoodsRecommends struct {
+//	商品推荐
+type GoodsRecommend struct {
 	RecId     uint32 `gorm:"rec_id"`
 	RecIndex  uint32 `gorm:"rec_index"`
 	RecName   string `gorm:"rec_name"`
@@ -77,6 +80,37 @@ type GoodsRecommends struct {
 	StoreId   uint32 `gorm:"store_id"`
 }
 
+//	商品分类
+type GoodsCategory struct {
+	GoodsCategoryId   uint32 `gorm:"goods_category_id"`
+	GoodsCategoryName string `gorm:"goods_category_name"`
+}
+
+//	商品附属分类
+type GoodsSubCategory struct {
+	GoodsId           uint32 `gorm:"goods_id"`
+	StoreId           uint32 `gorm:"store_id"`
+	GoodsCategoryId   uint32 `gorm:"goods_category_id"`
+	GoodsCategoryName string `gorm:"goods_category_name"`
+}
+
+//	商品图片
+type GoodsOtherImage struct {
+	GoodsId uint32 `gorm:"goods_id"`
+	StoreId uint32 `gorm:"store_id"`
+	Image   string `gorm:"image"`
+}
+
+//	商品属性
+type GoodsProperty struct {
+	GoodsId    uint32 `gorm:"goods_id"`
+	StoreId    uint32 `gorm:"store_id"`
+	PropertyId int32  `gorm:"property_id"`
+	ValueId    int32  `gorm:"value_id"`
+	ValueName  string `gorm:"value_name"`
+}
+
+//	返回商品唯一ID
 func UniqueId(storeId uint32, goodsId uint32) string {
 	return fmt.Sprintf("%d-%d", storeId, goodsId)
 }
@@ -139,7 +173,7 @@ WHERE
 	return tags
 }
 
-func GetGoodsRecommends(goodsIds []string, storeIds []string) map[string]GoodsRecommends {
+func GetGoodsRecommends(goodsIds []string, storeIds []string) map[string]GoodsRecommend {
 	goodsIds = utils.RemoveRepeat(goodsIds)
 	if len(goodsIds) < 1 {
 		return nil
@@ -160,14 +194,135 @@ FROM
 WHERE
 	rr.store_id in(` + strings.Join(storeIds, ",") + `) AND rr.goods_id IN (` + strings.Join(goodsIds, ",") + `)`
 
-	goodsRecommends := []GoodsRecommends{}
+	goodsRecommends := []GoodsRecommend{}
 	DB.Raw(sql).Find(&goodsRecommends)
 
-	recommends := make(map[string]GoodsRecommends)
+	recommends := make(map[string]GoodsRecommend)
 	for _, recommend := range goodsRecommends {
 		uniqueId := UniqueId(recommend.StoreId, recommend.GoodsId)
 		recommends[uniqueId] = recommend
 	}
 
 	return recommends
+}
+
+func GetGoodsCategories(tableHash string, categoryIds []string) map[uint32]GoodsCategory {
+	categoryIds = utils.RemoveRepeat(categoryIds)
+	if len(categoryIds) < 1 {
+		return nil
+	}
+	sql := `SELECT
+	id AS goods_category_id,
+	base_name AS goods_category_name
+FROM
+	z_goods_category_` + tableHash + `
+WHERE
+	id IN ( ` + strings.Join(categoryIds, ",") + ` ) `
+
+	goodsCategories := []GoodsCategory{}
+	DB.Raw(sql).Find(&goodsCategories)
+
+	categories := make(map[uint32]GoodsCategory)
+	for _, category := range goodsCategories {
+		categories[category.GoodsCategoryId] = category
+	}
+
+	return categories
+}
+
+func GetGoodsSubCategories(tableHash string, goodsIds []string, storeIds []string) map[string][]GoodsSubCategory {
+	goodsIds = utils.RemoveRepeat(goodsIds)
+	if len(goodsIds) < 1 {
+		return nil
+	}
+
+	storeIds = utils.RemoveRepeat(storeIds)
+	sql := `SELECT
+    r.goods_id,
+    r.store_id,
+	c.id AS goods_category_id,
+	c.base_name AS goods_category_name 
+FROM
+	z_goods_category_` + tableHash + ` c
+	LEFT JOIN z_goods_category_rel_` + tableHash + ` r ON c.id = r.category_id 
+WHERE
+	r.store_id in(` + strings.Join(storeIds, ",") + `) 
+	AND r.goods_id IN(` + strings.Join(goodsIds, ",") + `)`
+
+	goodsSubCategories := []GoodsSubCategory{}
+	DB.Raw(sql).Find(&goodsSubCategories)
+
+	subCategories := make(map[string][]GoodsSubCategory)
+	for _, category := range goodsSubCategories {
+		uniqueId := UniqueId(category.StoreId, category.GoodsId)
+
+		subCategories[uniqueId] = append(subCategories[uniqueId], category)
+	}
+
+	return subCategories
+}
+
+func GetGoodsOtherImages(tableHash string, goodsIds []string, storeIds []string) map[string]GoodsOtherImage {
+	goodsIds = utils.RemoveRepeat(goodsIds)
+	if len(goodsIds) < 1 {
+		return nil
+	}
+
+	storeIds = utils.RemoveRepeat(storeIds)
+	sql := `SELECT
+	goods_id,
+	store_id,
+	image 
+FROM
+	z_image_` + tableHash + ` 
+WHERE
+    store_id IN ( ` + strings.Join(storeIds, ",") + ` ) 
+	AND goods_id IN ( ` + strings.Join(goodsIds, ",") + ` ) 
+	AND category = 'goods' 
+	AND obj_id = 0 
+ORDER BY
+	listorder ASC`
+
+	goodsOtherImages := []GoodsOtherImage{}
+	DB.Raw(sql).Find(&goodsOtherImages)
+
+	otherImages := make(map[string]GoodsOtherImage)
+	for _, image := range goodsOtherImages {
+		uniqueId := UniqueId(image.StoreId, image.GoodsId)
+		otherImages[uniqueId] = image
+	}
+
+	return otherImages
+}
+
+func GetGoodsProperties(tableHash string, goodsIds []string, storeIds []string) map[string]GoodsProperty {
+	goodsIds = utils.RemoveRepeat(goodsIds)
+	if len(goodsIds) < 1 {
+		return nil
+	}
+
+	storeIds = utils.RemoveRepeat(storeIds)
+	sql := `SELECT
+	goods_id,
+	store_id,
+	property_id AS property_id,
+	value_id AS value_id,
+	value_name AS value_name 
+FROM
+	z_goods_property_rel_` + tableHash + ` 
+WHERE
+    store_id IN ( ` + strings.Join(storeIds, ",") + ` ) 
+	AND goods_id IN ( ` + strings.Join(goodsIds, ",") + ` ) 
+	AND value_id != 0`
+
+	goodsProperties := []GoodsProperty{}
+	DB.Raw(sql).Find(&goodsProperties)
+
+	properties := make(map[string]GoodsProperty)
+	for _, property := range goodsProperties {
+		uniqueId := UniqueId(property.StoreId, property.GoodsId)
+		properties[uniqueId] = property
+	}
+
+	return properties
 }
