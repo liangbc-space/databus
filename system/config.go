@@ -35,13 +35,19 @@ type KafkaConfig struct {
 	BrokerAddressFamily string   `yaml:"broker_address_family"`
 }
 
+/*elasticsearch连接配置*/
+type ElasticsearchConfig struct {
+	Addresses []string `yaml:"addresses"`
+}
+
 type Configuration struct {
-	Port            uint           `yaml:"port"`
-	DefaultPageSize uint           `yaml:"default_page_size"`
-	JWTSecret       string         `yaml:"jwt_secret"`
-	DbConfig        DatabaseConfig `yaml:"mysql"`
-	RedisConfig     RedisConfig    `yaml:"redis"`
-	KafkaConfig     KafkaConfig    `yaml:"kafka"`
+	Port                uint                `yaml:"port"`
+	DefaultPageSize     uint                `yaml:"default_page_size"`
+	JWTSecret           string              `yaml:"jwt_secret"`
+	DbConfig            DatabaseConfig      `yaml:"mysql"`
+	RedisConfig         RedisConfig         `yaml:"redis"`
+	KafkaConfig         KafkaConfig         `yaml:"kafka"`
+	ElasticsearchConfig ElasticsearchConfig `yaml:"elasticsearch"`
 }
 
 const (

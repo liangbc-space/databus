@@ -101,6 +101,14 @@ type GoodsOtherImage struct {
 	Image   string `gorm:"image"`
 }
 
+//	商品销量属性？
+type GoodsSaleProperty struct {
+	BaseName string `gorm:"base_name"`
+	Image    string `gorm:"image"`
+	GoodsId  uint32 `gorm:"goods_id"`
+	StoreId  uint32 `gorm:"store_id"`
+}
+
 //	商品属性
 type GoodsProperty struct {
 	GoodsId    uint32 `gorm:"goods_id"`
@@ -293,6 +301,40 @@ ORDER BY
 	}
 
 	return otherImages
+}
+
+func GetGoodsSaleProperties(tableHash string, goodsIds []string, storeIds []string) map[string]GoodsSaleProperty {
+	goodsIds = utils.RemoveRepeat(goodsIds)
+	if len(goodsIds) < 1 {
+		return nil
+	}
+
+	storeIds = utils.RemoveRepeat(storeIds)
+	sql := `SELECT
+	a.base_name,
+	a.image ,
+	a.goods_id,
+	b.store_id
+FROM
+	z_goods_sale_prop_` + tableHash + ` a
+	LEFT JOIN z_goods_sale_prop_` + tableHash + ` b ON a.parent_id = b.id 
+WHERE
+    b.store_id IN ( ` + strings.Join(storeIds, ",") + ` ) 
+	AND b.goods_id IN ( ` + strings.Join(goodsIds, ",") + ` ) 
+	AND b.multi_image = 1
+ORDER BY
+	a.listorder ASC`
+
+	goodsSaleProperties := []GoodsSaleProperty{}
+	DB.Raw(sql).Find(&goodsSaleProperties)
+
+	saleProperties := make(map[string]GoodsSaleProperty)
+	for _, property := range goodsSaleProperties {
+		uniqueId := UniqueId(property.StoreId, property.GoodsId)
+		saleProperties[uniqueId] = property
+	}
+
+	return saleProperties
 }
 
 func GetGoodsProperties(tableHash string, goodsIds []string, storeIds []string) map[string]GoodsProperty {

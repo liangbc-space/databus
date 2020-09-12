@@ -131,7 +131,6 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 	for _, goods := range goodsLists {
 		goodsIds = append(goodsIds, strconv.Itoa(int(goods.Id)))
 		storeIds = append(storeIds, strconv.Itoa(int(goods.StoreId)))
-
 		categoryIds = append(categoryIds, strings.Split(goods.CategoryPath, ",")...)
 	}
 	goodsIds = utils.RemoveRepeat(goodsIds)
@@ -158,6 +157,8 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 	fmt.Println(goodsOtherImages)
 
 	//  获取商品销量属性信息
+	goodsSaleProperties := models.GetGoodsSaleProperties(tableHash, goodsIds, storeIds)
+	fmt.Println(goodsSaleProperties)
 
 	//  获取商品属性信息
 	goodsProperties := models.GetGoodsProperties(tableHash, goodsIds, storeIds)

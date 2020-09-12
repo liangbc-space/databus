@@ -8,8 +8,6 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -18,7 +16,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/panjf2000/ants/v2"
 	"os"
 )
 
@@ -41,130 +38,7 @@ func init() {
 	}
 
 	//	初始化redis连接池
-	//utils.InitRedis()
-}
-
-func test1() {
-
-	signalChan := make(chan os.Signal)
-	signal.Notify(signalChan,
-		os.Interrupt,
-		os.Kill,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-	)
-
-	signalHandleFuc := func(control *utils.SignalControl) {
-		<-control.SignalChan
-	}
-
-	var sum uint32
-	signalControl := utils.SignalEvent(signalChan, signalHandleFuc)
-
-	p, err := ants.NewPoolWithFunc(1000, func(i interface{}) {
-		defer signalControl.Done()
-		select {
-		case <-signalControl.SignalChan:
-			return
-		default:
-			//time.Sleep(time.Millisecond * 200)
-			atomic.AddUint32(&sum, i.(uint32))
-		}
-	})
-
-	if err != nil {
-		panic(err)
-	}
-	defer p.Release()
-
-	for i := 1; i <= 1000000; i++ {
-		signalControl.Add(1)
-
-		p.Invoke(uint32(i))
-
-	}
-
-	signalControl.Wait()
-
-	fmt.Printf("sum：%d\n",sum)
-
-}
-
-type done struct {
-	c  chan os.Signal
-	wg *sync.WaitGroup
-}
-
-func (done done) doneEvent() {
-	signal.Notify(done.c, os.Kill,
-		os.Interrupt,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-	)
-
-	go func() {
-		<-done.c
-		close(done.c)
-	}()
-}
-
-func newDoneControl() *done {
-	done := done{
-		c:  make(chan os.Signal),
-		wg: new(sync.WaitGroup),
-	}
-
-	done.doneEvent()
-
-	return &done
-}
-
-func test2() {
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan,
-		os.Interrupt,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-
-	wg := new(sync.WaitGroup)
-
-	//done := newDoneControl()
-	for i := 1; i <= 2; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			for {
-				select {
-				case _, ok := <-signalChan:
-					fmt.Println("exit    ", i)
-					if ok {
-						close(signalChan)
-					}
-					fmt.Println("123")
-					return
-				default:
-					if i == 2 {
-						time.Sleep(5 * time.Second)
-					} else {
-						time.Sleep(2 * time.Second)
-					}
-
-					//time.Sleep(1 * time.Second)
-
-					fmt.Printf("当前值%d\n", i)
-				}
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
+	utils.InitRedis()
 }
 
 func main() {
@@ -207,7 +81,6 @@ func canal2() {
 	}
 
 	fmt.Printf("Created Consumer %v\n", c)
-
 
 	err = c.SubscribeTopics(topics, nil)
 
