@@ -2,13 +2,12 @@ package models
 
 import (
 	"databus/utils"
-	"fmt"
 	"strings"
 )
 
 //	商品基础信息
 type Godos struct {
-	UniqueId          string  `gorm:"uniqueeid" json:"unique_id"`
+	UniqueId          string  `gorm:"unique_id"`
 	Id                uint32  `gorm:"id"`
 	StoreId           uint32  `gorm:"store_id"`
 	BaseName          string  `gorm:"base_name"`
@@ -65,7 +64,7 @@ type Godos struct {
 //	商品标签
 type GoodsTag struct {
 	TagId   uint32 `gorm:"tag_id"`
-	TagName uint32 `gorm:"tag_name"`
+	TagName string `gorm:"tag_name"`
 	GoodsId uint32 `gorm:"goods_id"`
 	StoreId uint32 `gorm:"store_id"`
 }
@@ -118,11 +117,6 @@ type GoodsProperty struct {
 	ValueName  string `gorm:"value_name"`
 }
 
-//	返回商品唯一ID
-func UniqueId(storeId uint32, goodsId uint32) string {
-	return fmt.Sprintf("%d-%d", storeId, goodsId)
-}
-
 func GetGoods(tableHash string, optionDatas []map[string]interface{}) (goodsLists []Godos) {
 	goodsIds := make([]string, 0)
 	for _, item := range optionDatas {
@@ -131,7 +125,7 @@ func GetGoods(tableHash string, optionDatas []map[string]interface{}) (goodsList
 	goodsIds = utils.RemoveRepeat(goodsIds)
 	//	查询goods
 	sql := `SELECT
-	CONCAT( CAST( g.store_id AS CHAR ), '-', CAST( g.id AS CHAR ) ) AS uniqueeid,
+	CONCAT( CAST( g.store_id AS CHAR ), '-', CAST( g.id AS CHAR ) ) AS unique_id,
 	g.*,
 IF
 	( g.stock_nums > 0, 1, IF ( g.is_bookable, 1, 0 ) ) AS is_instock,
@@ -151,13 +145,11 @@ WHERE
 	return goodsLists
 }
 
-func GetGoodsTags(goodsIds []string, storeIds []string) map[string]GoodsTag {
-	goodsIds = utils.RemoveRepeat(goodsIds)
+func GetGoodsTags(goodsIds []string, storeIds []string) (goodsTags []GoodsTag) {
 	if len(goodsIds) < 1 {
 		return nil
 	}
 
-	storeIds = utils.RemoveRepeat(storeIds)
 	sql := `SELECT
 	tag_id AS tag_id,
 	base_name AS tag_name,
@@ -169,25 +161,15 @@ FROM
 WHERE
     r.store_id in(` + strings.Join(storeIds, ",") + `) and r.goods_id in(` + strings.Join(goodsIds, ",") + `)`
 
-	goodsTags := []GoodsTag{}
 	DB.Raw(sql).Find(&goodsTags)
 
-	tags := make(map[string]GoodsTag)
-	for _, tag := range goodsTags {
-		uniqueId := UniqueId(tag.StoreId, tag.GoodsId)
-		tags[uniqueId] = tag
-	}
-
-	return tags
+	return goodsTags
 }
 
-func GetGoodsRecommends(goodsIds []string, storeIds []string) map[string]GoodsRecommend {
-	goodsIds = utils.RemoveRepeat(goodsIds)
+func GetGoodsRecommends(goodsIds []string, storeIds []string) (goodsRecommends []GoodsRecommend) {
 	if len(goodsIds) < 1 {
 		return nil
 	}
-
-	storeIds = utils.RemoveRepeat(storeIds)
 
 	sql := `SELECT
 	r.id AS rec_id,
@@ -202,23 +184,16 @@ FROM
 WHERE
 	rr.store_id in(` + strings.Join(storeIds, ",") + `) AND rr.goods_id IN (` + strings.Join(goodsIds, ",") + `)`
 
-	goodsRecommends := []GoodsRecommend{}
 	DB.Raw(sql).Find(&goodsRecommends)
 
-	recommends := make(map[string]GoodsRecommend)
-	for _, recommend := range goodsRecommends {
-		uniqueId := UniqueId(recommend.StoreId, recommend.GoodsId)
-		recommends[uniqueId] = recommend
-	}
-
-	return recommends
+	return goodsRecommends
 }
 
 func GetGoodsCategories(tableHash string, categoryIds []string) map[uint32]GoodsCategory {
-	categoryIds = utils.RemoveRepeat(categoryIds)
 	if len(categoryIds) < 1 {
 		return nil
 	}
+
 	sql := `SELECT
 	id AS goods_category_id,
 	base_name AS goods_category_name
@@ -238,13 +213,11 @@ WHERE
 	return categories
 }
 
-func GetGoodsSubCategories(tableHash string, goodsIds []string, storeIds []string) map[string][]GoodsSubCategory {
-	goodsIds = utils.RemoveRepeat(goodsIds)
+func GetGoodsSubCategories(tableHash string, goodsIds []string, storeIds []string) (goodsSubCategories []GoodsSubCategory) {
 	if len(goodsIds) < 1 {
 		return nil
 	}
 
-	storeIds = utils.RemoveRepeat(storeIds)
 	sql := `SELECT
     r.goods_id,
     r.store_id,
@@ -257,26 +230,16 @@ WHERE
 	r.store_id in(` + strings.Join(storeIds, ",") + `) 
 	AND r.goods_id IN(` + strings.Join(goodsIds, ",") + `)`
 
-	goodsSubCategories := []GoodsSubCategory{}
 	DB.Raw(sql).Find(&goodsSubCategories)
 
-	subCategories := make(map[string][]GoodsSubCategory)
-	for _, category := range goodsSubCategories {
-		uniqueId := UniqueId(category.StoreId, category.GoodsId)
-
-		subCategories[uniqueId] = append(subCategories[uniqueId], category)
-	}
-
-	return subCategories
+	return goodsSubCategories
 }
 
-func GetGoodsOtherImages(tableHash string, goodsIds []string, storeIds []string) map[string]GoodsOtherImage {
-	goodsIds = utils.RemoveRepeat(goodsIds)
+func GetGoodsOtherImages(tableHash string, goodsIds []string, storeIds []string) (goodsOtherImages []GoodsOtherImage) {
 	if len(goodsIds) < 1 {
 		return nil
 	}
 
-	storeIds = utils.RemoveRepeat(storeIds)
 	sql := `SELECT
 	goods_id,
 	store_id,
@@ -291,25 +254,16 @@ WHERE
 ORDER BY
 	listorder ASC`
 
-	goodsOtherImages := []GoodsOtherImage{}
 	DB.Raw(sql).Find(&goodsOtherImages)
 
-	otherImages := make(map[string]GoodsOtherImage)
-	for _, image := range goodsOtherImages {
-		uniqueId := UniqueId(image.StoreId, image.GoodsId)
-		otherImages[uniqueId] = image
-	}
-
-	return otherImages
+	return goodsOtherImages
 }
 
-func GetGoodsSaleProperties(tableHash string, goodsIds []string, storeIds []string) map[string]GoodsSaleProperty {
-	goodsIds = utils.RemoveRepeat(goodsIds)
+func GetGoodsSaleProperties(tableHash string, goodsIds []string, storeIds []string) (goodsSaleProperties []GoodsSaleProperty) {
 	if len(goodsIds) < 1 {
 		return nil
 	}
 
-	storeIds = utils.RemoveRepeat(storeIds)
 	sql := `SELECT
 	a.base_name,
 	a.image ,
@@ -325,25 +279,16 @@ WHERE
 ORDER BY
 	a.listorder ASC`
 
-	goodsSaleProperties := []GoodsSaleProperty{}
 	DB.Raw(sql).Find(&goodsSaleProperties)
 
-	saleProperties := make(map[string]GoodsSaleProperty)
-	for _, property := range goodsSaleProperties {
-		uniqueId := UniqueId(property.StoreId, property.GoodsId)
-		saleProperties[uniqueId] = property
-	}
-
-	return saleProperties
+	return goodsSaleProperties
 }
 
-func GetGoodsProperties(tableHash string, goodsIds []string, storeIds []string) map[string]GoodsProperty {
-	goodsIds = utils.RemoveRepeat(goodsIds)
+func GetGoodsProperties(tableHash string, goodsIds []string, storeIds []string) (goodsProperties []GoodsProperty) {
 	if len(goodsIds) < 1 {
 		return nil
 	}
 
-	storeIds = utils.RemoveRepeat(storeIds)
 	sql := `SELECT
 	goods_id,
 	store_id,
@@ -357,14 +302,7 @@ WHERE
 	AND goods_id IN ( ` + strings.Join(goodsIds, ",") + ` ) 
 	AND value_id != 0`
 
-	goodsProperties := []GoodsProperty{}
 	DB.Raw(sql).Find(&goodsProperties)
 
-	properties := make(map[string]GoodsProperty)
-	for _, property := range goodsProperties {
-		uniqueId := UniqueId(property.StoreId, property.GoodsId)
-		properties[uniqueId] = property
-	}
-
-	return properties
+	return goodsProperties
 }

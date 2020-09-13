@@ -1,1 +1,60 @@
 package mysql_elasticsearch
+
+type GoodsBase struct {
+	UniqueId          string
+	Id                uint32
+	StoreId           uint32
+	BaseName          string
+	BrandId           uint32
+	GoodsTypeId       int32
+	CategoryPath      string
+	CategoryId        uint32
+	Codeno            string
+	Image             string
+	Price             float64
+	CostPrice         float64
+	MarketPrice       float64
+	ListOrder         int32
+	Status            int8
+	UpTime            int32
+	DownTime          int32
+	CreateTime        int32
+	ModifyTime        int32
+	TemplatePage      string
+	VisitCounts       int32
+	BuyCounts         int32
+	WishlistCounts    int32
+	CommentCounts     int32
+	CommentValue      int32
+	StockNums         int32
+	SaleMode          int8
+	SpecMode          int8
+	IsDiyRemark       int8
+	Weight            float32
+	StartTime         uint32
+	EndTime           uint32
+	IsFreeShipping    uint8
+	SpecialOfferId    uint32
+	Discount          float32
+	Title             string
+	Keywords          string
+	Descript          string
+	MiniDetail        string
+	GroupCodeno       string
+	Moq               int32
+	Mxoq              int32
+	IsBookable        int8
+	B2bStatus         int8
+	UserGroupIdValues string
+	Volume            float32
+	SupplierRemark    string
+	Video             string
+	IsInstock         int8
+	CreateDay         string
+	BrandName         string
+	CategoryName      string
+	MysqlTableName    string
+
+	TagIds   []uint32
+	TagNames []string
+}

@@ -37,7 +37,9 @@ type KafkaConfig struct {
 
 /*elasticsearch连接配置*/
 type ElasticsearchConfig struct {
-	Addresses []string `yaml:"addresses"`
+	Urls     []string `yaml:"urls"`
+	Username string   `yaml:"username"`
+	Password string   `yaml:"password"`
 }
 
 type Configuration struct {
@@ -55,10 +57,10 @@ const (
 	httpServerPort  = 8080
 )
 
-var SystemConfig *Configuration
+var ApplicationCfg *Configuration
 
 func LoadConfiguration(path string) error {
-	if SystemConfig != nil {
+	if ApplicationCfg != nil {
 		return nil
 	}
 
@@ -67,17 +69,17 @@ func LoadConfiguration(path string) error {
 		return err
 	}
 
-	err = yaml.Unmarshal(configData, &SystemConfig)
+	err = yaml.Unmarshal(configData, &ApplicationCfg)
 	if err != nil {
 		return err
 	}
 
-	if SystemConfig.DefaultPageSize <= 0 {
-		SystemConfig.DefaultPageSize = defaultPageSize
+	if ApplicationCfg.DefaultPageSize <= 0 {
+		ApplicationCfg.DefaultPageSize = defaultPageSize
 	}
 
-	if SystemConfig.Port <= 0 {
-		SystemConfig.Port = httpServerPort
+	if ApplicationCfg.Port <= 0 {
+		ApplicationCfg.Port = httpServerPort
 	}
 
 	return err

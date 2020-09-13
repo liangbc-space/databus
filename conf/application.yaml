@@ -29,5 +29,7 @@ kafka:
 
 
 elasticsearch:
-  addresses:
-    - "http://elastic:iu6Gf$*l^pB*ghCB@es-cn-zz11padcy0003i78s.public.elasticsearch.aliyuncs.com:9200"
+  urls:
+    - http://es-cn-zz11padcy0003i78s.public.elasticsearch.aliyuncs.com:9200
+  username: elastic
+  password: iu6Gf$*l^pB*ghCB

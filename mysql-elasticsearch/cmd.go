@@ -8,6 +8,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"os"
 	"os/signal"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -133,15 +134,17 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 		storeIds = append(storeIds, strconv.Itoa(int(goods.StoreId)))
 		categoryIds = append(categoryIds, strings.Split(goods.CategoryPath, ",")...)
 	}
+
+	//	去重
 	goodsIds = utils.RemoveRepeat(goodsIds)
 	storeIds = utils.RemoveRepeat(storeIds)
+	categoryIds = utils.RemoveRepeat(categoryIds)
 
 	//  获取商品tag信息
 	goodsTags := models.GetGoodsTags(goodsIds, storeIds)
-	fmt.Println(goodsTags)
 
 	//  获取商品推荐信息
-	goodsRecommends := models.GetGoodsRecommends(goodsIds, storeIds)
+	/*goodsRecommends := models.GetGoodsRecommends(goodsIds, storeIds)
 	fmt.Println(goodsRecommends)
 
 	//  获取商品分类信息
@@ -162,5 +165,35 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 
 	//  获取商品属性信息
 	goodsProperties := models.GetGoodsProperties(tableHash, goodsIds, storeIds)
-	fmt.Println(goodsProperties)
+	fmt.Println(goodsProperties)*/
+
+	elasticsearchGoods := make([]GoodsBase, 0)
+	for _, goods := range goodsLists {
+		goodsData := new(GoodsBase)
+
+		rValue := reflect.ValueOf(goods)
+		rv := reflect.ValueOf(goodsData)
+		for i := 0; i < rValue.NumField(); i++ {
+			field := rv.Elem().FieldByName(rValue.Type().Field(i).Name)
+
+			if field.IsValid() && field.CanSet() {
+				field.Set(rValue.Field(i))
+			}
+		}
+		goodsData.MysqlTableName = fmt.Sprintf("z_goods-%s", tableHash)
+
+		for _, tag := range goodsTags {
+			if tag.StoreId == goods.StoreId && tag.GoodsId == goods.Id {
+				fmt.Println(1)
+				goodsData.TagIds = append(goodsData.TagIds, tag.TagId)
+				goodsData.TagNames = append(goodsData.TagNames, tag.TagName)
+			}
+
+		}
+
+		elasticsearchGoods = append(elasticsearchGoods, *goodsData)
+
+		fmt.Println(elasticsearchGoods)
+	}
+
 }

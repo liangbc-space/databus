@@ -27,7 +27,7 @@ var (
 )
 
 func InitRedis() {
-	redisConfig = system.SystemConfig.RedisConfig
+	redisConfig = system.ApplicationCfg.RedisConfig
 
 	RedisClient = new(redisClient)
 	RedisClient.Pool = &redis.Pool{

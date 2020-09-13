@@ -19,8 +19,8 @@ type ConsumerInstance struct {
 
 func (consumerConfig ConsumerConfig) ConsumerInstance(groupId string, autoCommitOffset bool) (consumer *kafka.Consumer) {
 	configMap := kafka.ConfigMap{
-		"bootstrap.servers":     strings.Join(system.SystemConfig.KafkaConfig.Brokers, ","),
-		"broker.address.family": system.SystemConfig.KafkaConfig.BrokerAddressFamily,
+		"bootstrap.servers":     strings.Join(system.ApplicationCfg.KafkaConfig.Brokers, ","),
+		"broker.address.family": system.ApplicationCfg.KafkaConfig.BrokerAddressFamily,
 	}
 
 	for key, value := range consumerConfig {

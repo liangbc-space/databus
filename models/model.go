@@ -19,7 +19,7 @@ var DB *gorm.DB
 func InitDB() (*gorm.DB, error) {
 	var err error
 
-	DbConfig := system.SystemConfig.DbConfig
+	DbConfig := system.ApplicationCfg.DbConfig
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=true&loc=Local", DbConfig.Username, DbConfig.Password, DbConfig.Host, DbConfig.Port, DbConfig.Dbname)
 
 	DB, err = gorm.Open("mysql", dsn)
