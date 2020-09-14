@@ -2,6 +2,7 @@ package models
 
 import (
 	"databus/utils"
+	"fmt"
 	"strings"
 )
 
@@ -213,7 +214,7 @@ WHERE
 	return categories
 }
 
-func GetGoodsSubCategories(tableHash string, goodsIds []string, storeIds []string) (goodsSubCategories []GoodsSubCategory) {
+func GetGoodsSubCategories(tableHash string, goodsIds []string, storeIds []string) map[string][]GoodsSubCategory {
 	if len(goodsIds) < 1 {
 		return nil
 	}
@@ -230,9 +231,16 @@ WHERE
 	r.store_id in(` + strings.Join(storeIds, ",") + `) 
 	AND r.goods_id IN(` + strings.Join(goodsIds, ",") + `)`
 
+	goodsSubCategories := []GoodsSubCategory{}
 	DB.Raw(sql).Find(&goodsSubCategories)
 
-	return goodsSubCategories
+	subCategories := make(map[string][]GoodsSubCategory)
+	for _, category := range goodsSubCategories {
+		uniqueId := fmt.Sprintf("%d-%d", category.StoreId, category.GoodsId)
+		subCategories[uniqueId] = append(subCategories[uniqueId], category)
+	}
+
+	return subCategories
 }
 
 func GetGoodsOtherImages(tableHash string, goodsIds []string, storeIds []string) (goodsOtherImages []GoodsOtherImage) {

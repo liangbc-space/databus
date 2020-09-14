@@ -33,3 +33,19 @@ func RemoveRepeat(list []string) []string {
 
 	return output
 }
+
+func In(list []interface{}, item interface{}) (isIn bool) {
+	if len(list) < 1 {
+		return false
+	}
+
+	for _, val := range list {
+		if val == item {
+			isIn = true
+		} else {
+			isIn = false
+		}
+	}
+
+	return isIn
+}

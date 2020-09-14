@@ -9,7 +9,7 @@ mysql:
   password: lx#r858zat4bYRX
   prefix:
   dbname: cn01_db
-  debug: true
+  debug: false
   #连接池设置
   pool:
     max_idle: 50  #连接池最大允许的空闲连接数

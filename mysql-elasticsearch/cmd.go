@@ -1,14 +1,15 @@
 package mysql_elasticsearch
 
 import (
+	"context"
 	"databus/models"
 	"databus/utils"
 	"encoding/json"
 	"fmt"
+	"github.com/olivere/elastic/v7"
 	"github.com/panjf2000/ants/v2"
 	"os"
 	"os/signal"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -124,12 +125,13 @@ func execute(args interface{}) {
 
 func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface{}) {
 	//	获取商品的基本信息
-	goodsLists := models.GetGoods(tableHash, optionDatas)
+	list := make(goodsLists, 0)
+	list = models.GetGoods(tableHash, optionDatas)
 
 	goodsIds := make([]string, 0)
 	storeIds := make([]string, 0)
 	categoryIds := make([]string, 0)
-	for _, goods := range goodsLists {
+	for _, goods := range list {
 		goodsIds = append(goodsIds, strconv.Itoa(int(goods.Id)))
 		storeIds = append(storeIds, strconv.Itoa(int(goods.StoreId)))
 		categoryIds = append(categoryIds, strings.Split(goods.CategoryPath, ",")...)
@@ -141,59 +143,41 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 	categoryIds = utils.RemoveRepeat(categoryIds)
 
 	//  获取商品tag信息
-	goodsTags := models.GetGoodsTags(goodsIds, storeIds)
+	GoodsTags = models.GetGoodsTags(goodsIds, storeIds)
 
 	//  获取商品推荐信息
-	/*goodsRecommends := models.GetGoodsRecommends(goodsIds, storeIds)
-	fmt.Println(goodsRecommends)
+	GoodsRecommends = models.GetGoodsRecommends(goodsIds, storeIds)
 
 	//  获取商品分类信息
-	goodsCategories := models.GetGoodsCategories(tableHash, categoryIds)
-	fmt.Println(goodsCategories)
+	GoodsCategories = models.GetGoodsCategories(tableHash, categoryIds)
 
 	//  获取商品附属分类信息
-	goodsSubCategories := models.GetGoodsSubCategories(tableHash, goodsIds, storeIds)
-	fmt.Println(goodsSubCategories)
+	GoodsSubCategories = models.GetGoodsSubCategories(tableHash, goodsIds, storeIds)
 
 	//  获取商品图片信息
-	goodsOtherImages := models.GetGoodsOtherImages(tableHash, goodsIds, storeIds)
-	fmt.Println(goodsOtherImages)
+	GoodsOtherImages = models.GetGoodsOtherImages(tableHash, goodsIds, storeIds)
 
 	//  获取商品销量属性信息
-	goodsSaleProperties := models.GetGoodsSaleProperties(tableHash, goodsIds, storeIds)
-	fmt.Println(goodsSaleProperties)
+	GoodsSaleProperties = models.GetGoodsSaleProperties(tableHash, goodsIds, storeIds)
 
 	//  获取商品属性信息
-	goodsProperties := models.GetGoodsProperties(tableHash, goodsIds, storeIds)
-	fmt.Println(goodsProperties)*/
+	GoodsProperties = models.GetGoodsProperties(tableHash, goodsIds, storeIds)
 
-	elasticsearchGoods := make([]GoodsBase, 0)
-	for _, goods := range goodsLists {
-		goodsData := new(GoodsBase)
+	//	组装es商品数据
+	elasticsearchGoods := list.buildElasticsearchGoods(tableHash)
 
-		rValue := reflect.ValueOf(goods)
-		rv := reflect.ValueOf(goodsData)
-		for i := 0; i < rValue.NumField(); i++ {
-			field := rv.Elem().FieldByName(rValue.Type().Field(i).Name)
-
-			if field.IsValid() && field.CanSet() {
-				field.Set(rValue.Field(i))
-			}
-		}
-		goodsData.MysqlTableName = fmt.Sprintf("z_goods-%s", tableHash)
-
-		for _, tag := range goodsTags {
-			if tag.StoreId == goods.StoreId && tag.GoodsId == goods.Id {
-				fmt.Println(1)
-				goodsData.TagIds = append(goodsData.TagIds, tag.TagId)
-				goodsData.TagNames = append(goodsData.TagNames, tag.TagName)
-			}
-
-		}
-
-		elasticsearchGoods = append(elasticsearchGoods, *goodsData)
-
-		fmt.Println(elasticsearchGoods)
+	bulk := utils.ElasticsearchClient.Bulk()
+	for _, goods := range elasticsearchGoods {
+		request := elastic.NewBulkIndexRequest().Index("goods_base_test").Id(goods["unique_id"].(string)).Doc(goods)
+		bulk.Add(request)
 	}
+
+	if bulk.NumberOfActions() > 1 {
+		_, err := bulk.Do(context.TODO())
+		if err != nil {
+			panic(err)
+		}
+	}
+
 
 }
