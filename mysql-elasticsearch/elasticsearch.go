@@ -145,17 +145,24 @@ func (goodsItem esGoods) buildGoodsCategories(categoryIds []string) esGoods {
 		goodsItem["category_ids"] = make([]uint32,0)
 	}
 
-	rType := reflect.ValueOf(goodsItem["category_ids"])
+	rType := reflect.TypeOf(goodsItem["category_ids"])
+	rValue := reflect.ValueOf(goodsItem["category_ids"])
 	for _, id := range categoryIds {
+		fmt.Println(123)
 		id, _ := strconv.Atoi(id)
 
 		goodsCategory, ok := GoodsCategories[uint32(id)]
 		if ok {
+			fmt.Println(rType.Kind())
 			switch rType.Kind() {
 			case reflect.Slice,reflect.Array:
-				fmt.Println(123)
 				//fmt.Println(reflect.ValueOf(goodsCategory).FieldByName("GoodsCategoryId"))
-				reflect.Append(reflect.ValueOf(goodsItem["category_ids"]).Elem(), reflect.ValueOf(goodsCategory).FieldByName("GoodsCategoryId"))
+				//value1 := reflect.Append(reflect.ValueOf(goodsItem["category_ids"]), reflect.ValueOf(goodsCategory).FieldByName("GoodsCategoryId"))
+				id := reflect.ValueOf(goodsCategory).FieldByName("GoodsCategoryId")
+				rValue.Elem().Set(reflect.Append(rValue, id))
+				//rValue.Elem().Set(reflect.Append(rValue.Elem(), id))
+				//reflect.ValueOf(goodsItem["category_ids"]).Set(value1)
+
 				/*for i:=0;i<rValue.Len();i++{
 
 					fmt.Println(rValue.Index(i).Type())
@@ -173,7 +180,6 @@ func (goodsItem esGoods) buildGoodsCategories(categoryIds []string) esGoods {
 	fmt.Println(goodsItem["category_ids"])
 	/*goodsItem["category_ids"] = ids
 	goodsItem["category_names"] = names*/
-	os.Exit(1)
 
 	return goodsItem
 }
