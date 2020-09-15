@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func Run() {
@@ -45,7 +46,8 @@ func Run() {
 }
 
 func signalHandleFunc(control *utils.SignalControl) {
-	<-control.SignalChan
+	sig, _ := <-control.SignalChan
+	fmt.Printf("收到信号【%v】程序退出\n", sig)
 }
 
 func execute(args interface{}) {
@@ -53,17 +55,20 @@ func execute(args interface{}) {
 
 	topic := argsMap["topic"].(string)
 	control := argsMap["signal_control"].(*utils.SignalControl)
+	defer control.Done()
 
 	consumer := createConsumerInstance()
 	if err := consumer.Subscribe(topic, nil); err != nil {
 		panic(err)
 	}
-
-	reg := regexp.MustCompile(`^cn01_db.z_goods_(\d{2})$`)
-	tableHash := reg.FindStringSubmatch(topic)[1]
-
 	defer consumer.Close()
-	defer control.Done()
+
+	reg := regexp.MustCompile(`^cn01_db.z_goods_(\d{2,3})$`)
+	matches := reg.FindStringSubmatch(topic)
+	if len(matches) < 1 {
+		return
+	}
+	tableHash := matches[1]
 
 	allOptionData := make([]map[string]interface{}, 0)
 	saveOptionData := make([]map[string]interface{}, 0)
@@ -71,21 +76,22 @@ func execute(args interface{}) {
 
 		select {
 		case <-control.SignalChan:
-			fmt.Println("收到退出信号")
 			return
 		default:
 			//	获取kafka消息
 			message := pullMessages(consumer)
 			if message == nil {
+				if len(allOptionData) > 0 {
+					sync(&allOptionData, &saveOptionData)
+				}
 				continue
 			}
 
 			//optionData := make(map[string]interface{})
-			type Message struct {
+			optionData := new(struct {
 				Data       interface{} `json:"data"`
 				OptionType string      `json:"type"`
-			}
-			optionData := new(Message)
+			})
 			if err := json.Unmarshal(message.Value, &optionData); err != nil {
 				panic(err)
 			}
@@ -99,30 +105,16 @@ func execute(args interface{}) {
 				goodsData["goods_id"] = item["id"]
 				goodsData["store_id"] = item["store_id"]
 				goodsData["operation_type"] = strings.ToUpper(optionData.OptionType)
+				goodsData["table_hash"] = tableHash
 
 				allOptionData = append(allOptionData, goodsData)
 				if goodsData["operation_type"] != "DELETE" {
 					saveOptionData = append(saveOptionData, goodsData)
 				}
-
 			}
 
 			if len(allOptionData) >= 100 {
-				goodsLists := elasticsearchGoodsData(tableHash, saveOptionData)
-				pushToElasticsearch(allOptionData, goodsLists)
-
-				allOptionData = make([]map[string]interface{}, 0)
-				saveOptionData = make([]map[string]interface{}, 0)
-
-				/*if *message.TopicPartition.Topic == "cn01_db.z_goods_00" {
-					time.Sleep(time.Second * 1)
-				} else {
-					time.Sleep(time.Second * 5)
-				}*/
-				/*bytes, _ := json.Marshal(list)
-				fmt.Println(string(bytes))*/
-
-
+				sync(&allOptionData, &saveOptionData)
 			}
 
 
@@ -132,7 +124,39 @@ func execute(args interface{}) {
 
 }
 
-func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface{}) map[string]esGoods {
+func sync(allOptionData *[]map[string]interface{}, saveOptionData *[]map[string]interface{}) {
+	millisecond := time.Now().UnixNano() / 1e6
+	//	构建es商品数据
+	goodsLists := make(map[string]esGoods)
+	if len(*saveOptionData) > 0 {
+		goodsLists = buildEsGoods(*saveOptionData)
+	}
+
+	//	数据更新到es
+	pushToElasticsearch(*allOptionData, goodsLists)
+
+	fmt.Printf("%s:  %s  成功处理%d数据  耗时%dms\n",
+		time.Now().Format("2006/01/02 03:04:05.000"),
+		fmt.Sprintf("z_goods_%s", (*allOptionData)[0]["table_hash"].(string)),
+		len(*allOptionData),
+		time.Now().UnixNano()/1e6-millisecond,
+	)
+	millisecond = time.Now().UnixNano() / 1e6
+
+	*allOptionData = (*allOptionData)[0:0]
+	*saveOptionData = (*saveOptionData)[0:0]
+
+	/*if *message.TopicPartition.Topic == "cn01_db.z_goods_00" {
+		time.Sleep(time.Second * 1)
+	} else {
+		time.Sleep(time.Second * 5)
+	}*/
+	/*bytes, _ := json.Marshal(list)
+	fmt.Println(string(bytes))*/
+}
+
+func buildEsGoods(optionDatas []map[string]interface{}) map[string]esGoods {
+	tableHash := optionDatas[0]["table_hash"].(string)
 	//	获取商品的基本信息
 	list := make(goodsLists, 0)
 	list = models.GetGoods(tableHash, optionDatas)

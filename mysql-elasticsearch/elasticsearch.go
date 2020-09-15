@@ -48,7 +48,7 @@ var (
 )
 
 func uniqueId(goodsId interface{}, storeId interface{}) string {
-	return fmt.Sprintf("%d-%d", storeId, goodsId)
+	return fmt.Sprintf("%v-%v", storeId, goodsId)
 }
 
 func (list goodsLists) buildElasticsearchGoods(tableHash string) map[string]esGoods {
@@ -312,7 +312,7 @@ func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[
 			request := elastic.NewBulkDeleteRequest().Index(INDEX).Id(unqId)
 			bulk.Add(request)
 		} else if ok {
-			request := elastic.NewBulkIndexRequest().Index(INDEX).Id(unqId).Doc(&goods)
+			request := elastic.NewBulkIndexRequest().Index(INDEX).Id(unqId).Doc(goods)
 			bulk.Add(request)
 		}
 	}

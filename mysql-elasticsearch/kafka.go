@@ -22,7 +22,7 @@ func getTopics() (topics []string) {
 
 func pullMessages(consumer *utils.ConsumerInstance) (messages *kafka.Message) {
 
-	event := consumer.Poll(100)
+	event := consumer.Poll(150)
 	if event == nil {
 		return nil
 	}
