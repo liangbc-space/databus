@@ -1,71 +1,93 @@
 package mysql_elasticsearch
 
 import (
+	"context"
 	"databus/models"
 	"databus/utils"
 	"fmt"
-	"os"
+	"github.com/olivere/elastic/v7"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
-//elasticsearch商品
-type esGoods map[string]interface{}
+const (
+	INDEX = "goods_base_test"
+	ALIAS = "alias_goods_base_test"
+)
 
-//elasticsearch商品列表
-type esGoodsLists []esGoods
+type (
+	//elasticsearch商品
+	esGoods map[string]interface{}
 
-//商品基础信息
-type goodsLists []models.Godos
+	//商品基础信息
+	goodsLists []models.Godos
+)
 
-//商品tag
-var GoodsTags []models.GoodsTag
+var (
+	//商品tag
+	GoodsTags []models.GoodsTag
 
-//商品推荐信息
-var GoodsRecommends []models.GoodsRecommend
+	//商品推荐信息
+	GoodsRecommends []models.GoodsRecommend
 
-//商品分类
-var GoodsCategories map[uint32]models.GoodsCategory
+	//商品分类
+	GoodsCategories map[uint32]models.GoodsCategory
 
-//商品附属分类
-var GoodsSubCategories map[string][]models.GoodsSubCategory
+	//商品附属分类
+	GoodsSubCategories map[string][]models.GoodsSubCategory
 
-//商品图片
-var GoodsOtherImages []models.GoodsOtherImage
+	//商品图片
+	GoodsOtherImages []models.GoodsOtherImage
 
-//商品销量属性
-var GoodsSaleProperties []models.GoodsSaleProperty
+	//商品销量属性
+	GoodsSaleProperties []models.GoodsSaleProperty
 
-//商品属性
-var GoodsProperties []models.GoodsProperty
+	//商品属性
+	GoodsProperties []models.GoodsProperty
+)
 
 func uniqueId(goodsId interface{}, storeId interface{}) string {
 	return fmt.Sprintf("%d-%d", storeId, goodsId)
 }
 
-func (list goodsLists) buildElasticsearchGoods(tableHash string) (esGoodsLists esGoodsLists) {
+func (list goodsLists) buildElasticsearchGoods(tableHash string) map[string]esGoods {
+	goodsLists := make(map[string]esGoods)
 	for _, goods := range list {
 		goodsItem := make(esGoods)
-
-		goodsItem = goodsItem.buildBaseGoods(goods)
 		goodsItem["mysql_table_name"] = fmt.Sprintf("z_goods-%s", tableHash)
 
-		goodsItem = goodsItem.buildGoodsTags(goods.Id, goods.StoreId)
+		uniqueId := uniqueId(goods.Id, goods.StoreId)
 
-		goodsItem = goodsItem.buildGoodsRecommends(goods.Id, goods.StoreId)
+		(&goodsItem).
+			//	商品基础信息
+			buildBaseGoods(goods).
+			//	商品标签
+			buildGoodsTags(uniqueId).
+			//	商品推荐信息
+			buildGoodsRecommends(uniqueId).
+			//	商品分类
+			buildGoodsCategories(strings.Split(goods.CategoryPath, ",")).
+			//	商品子分类
+			buildGoodsSubCategories(uniqueId).
+			//	商品图片
+			buildGoodsOtherImages(uniqueId).
+			//	商品sale属性
+			buildGoodsSaleProps(uniqueId).
+			//	商品属性
+			buildGoodsProps(uniqueId).
+			//	搜索关键词
+			initSearchKeywords()
 
-		goodsItem = goodsItem.buildGoodsCategories(strings.Split(goods.CategoryPath, ","))
-
-		goodsItem = goodsItem.buildGoodsSubCategories(uniqueId(goods.Id, goods.StoreId))
-
-		esGoodsLists = append(esGoodsLists, goodsItem)
+		goodsLists[uniqueId] = goodsItem
 	}
 
-	return esGoodsLists
+	return goodsLists
 }
 
-func (goodsItem esGoods) buildBaseGoods(goods models.Godos) esGoods {
+func (p *esGoods) buildBaseGoods(goods models.Godos) *esGoods {
+	goodsItem := *p
+
 	rValue := reflect.ValueOf(goods)
 	for i := 0; i < rValue.NumField(); i++ {
 		field := rValue.Type().Field(i).Tag.Get("gorm")
@@ -86,15 +108,17 @@ func (goodsItem esGoods) buildBaseGoods(goods models.Godos) esGoods {
 	}
 	goodsItem["user_group_ids"] = userGroupIds
 
-	return goodsItem
+	return p
 }
 
-func (goodsItem esGoods) buildGoodsTags(goodsId uint32, storeId uint32) esGoods {
+func (p *esGoods) buildGoodsTags(unqId string) *esGoods {
+	goodsItem := *p
+
 	tagIds := make([]uint32, 0)
 	tagNames := make([]string, 0)
 
 	for _, tag := range GoodsTags {
-		if tag.StoreId == storeId && tag.GoodsId == goodsId {
+		if unqId == tag.UniqueId {
 			tagIds = append(tagIds, tag.TagId)
 			tagNames = append(tagNames, tag.TagName)
 		}
@@ -102,15 +126,17 @@ func (goodsItem esGoods) buildGoodsTags(goodsId uint32, storeId uint32) esGoods 
 	goodsItem["tag_ids"] = tagIds
 	goodsItem["tag_names"] = tagNames
 
-	return goodsItem
+	return p
 }
 
-func (goodsItem esGoods) buildGoodsRecommends(goodsId uint32, storeId uint32) esGoods {
+func (p *esGoods) buildGoodsRecommends(unqId string) *esGoods {
+	goodsItem := *p
+
 	recIds := make([]uint32, 0)
 	recNames := make([]string, 0)
 
 	for _, recommend := range GoodsRecommends {
-		if recommend.GoodsId == goodsId && recommend.StoreId == storeId {
+		if unqId == recommend.UniqueId {
 
 			recIds = append(recIds, recommend.RecId)
 			recNames = append(recNames, recommend.RecName)
@@ -122,83 +148,187 @@ func (goodsItem esGoods) buildGoodsRecommends(goodsId uint32, storeId uint32) es
 	goodsItem["rec_ids"] = recIds
 	goodsItem["rec_names"] = recNames
 
-	return goodsItem
+	return p
 }
 
-func (goodsItem esGoods) buildGoodsCategories(categoryIds []string) esGoods {
-	/*ids := make([]uint32, 0)
-	names := make([]string, 0)
+func (p *esGoods) buildGoodsCategories(categoryIds []string) *esGoods {
+
+	categories := make([]models.GoodsCategory, 0)
 	for _, id := range categoryIds {
 		id, _ := strconv.Atoi(id)
 
 		if _, ok := GoodsCategories[uint32(id)]; ok {
-			ids = append(ids, GoodsCategories[uint32(id)].GoodsCategoryId)
-			names = append(names, GoodsCategories[uint32(id)].GoodsCategoryName)
+			categories = append(categories, GoodsCategories[uint32(id)])
 		}
 	}
-	goodsItem["category_ids"] = ids
-	goodsItem["category_names"] = names
 
-	return goodsItem*/
+	p.initCategory(categories)
 
-	if _,ok:=goodsItem["category_ids"];!ok {
-		goodsItem["category_ids"] = make([]uint32,0)
-	}
+	/*test := make([]models.GoodsSubCategory, 0)
+	test = append(test, models.GoodsSubCategory{GoodsCategoryId: 321, GoodsCategoryName: "测试123"})
+	p.initCategory(test)*/
 
-	rType := reflect.TypeOf(goodsItem["category_ids"])
-	rValue := reflect.ValueOf(goodsItem["category_ids"])
-	for _, id := range categoryIds {
-		fmt.Println(123)
-		id, _ := strconv.Atoi(id)
+	return p
 
-		goodsCategory, ok := GoodsCategories[uint32(id)]
-		if ok {
-			fmt.Println(rType.Kind())
-			switch rType.Kind() {
-			case reflect.Slice,reflect.Array:
-				//fmt.Println(reflect.ValueOf(goodsCategory).FieldByName("GoodsCategoryId"))
-				//value1 := reflect.Append(reflect.ValueOf(goodsItem["category_ids"]), reflect.ValueOf(goodsCategory).FieldByName("GoodsCategoryId"))
-				id := reflect.ValueOf(goodsCategory).FieldByName("GoodsCategoryId")
-				rValue.Elem().Set(reflect.Append(rValue, id))
-				//rValue.Elem().Set(reflect.Append(rValue.Elem(), id))
-				//reflect.ValueOf(goodsItem["category_ids"]).Set(value1)
-
-				/*for i:=0;i<rValue.Len();i++{
-
-					fmt.Println(rValue.Index(i).Type())
-				}*/
-			}
-			/*switch rValue.Interface().(type) {
-			case []int8,[]int16,[]int32,[]int64,[]uint8,[]uint16,[]uint32,[]uint64:
-				reflect.Append(rValue,reflect.ValueOf(GoodsCategories[uint32(id)].GoodsCategoryId))
-
-			}*/
-			/*ids = append(ids, GoodsCategories[uint32(id)].GoodsCategoryId)
-			names = append(names, GoodsCategories[uint32(id)].GoodsCategoryName)*/
-		}
-	}
-	fmt.Println(goodsItem["category_ids"])
-	/*goodsItem["category_ids"] = ids
-	goodsItem["category_names"] = names*/
-
-	return goodsItem
 }
 
-func (goodsItem esGoods) buildGoodsSubCategories(uniqueId string) esGoods {
+func (p *esGoods) buildGoodsSubCategories(uniqueId string) *esGoods {
+
 	subCategories, ok := GoodsSubCategories[uniqueId]
 	if ok {
-		for _, category := range subCategories {
-			rValue := reflect.ValueOf(goodsItem["category_names"])
-			switch rValue.Kind() {
-			case reflect.Slice, reflect.Array:
-				fmt.Println(rValue.Index(0))
-			}
-			fmt.Println(category)
+		p.initCategory(subCategories)
+	}
+
+	return p
+}
+
+func (p *esGoods) buildGoodsOtherImages(unqId string) *esGoods {
+	goodsItem := *p
+
+	images := make([]string, 0)
+	for _, image := range GoodsOtherImages {
+		if unqId == image.UniqueId {
+			images = append(images, image.Image)
+		}
+	}
+	goodsItem["images_other"] = images
+
+	return p
+}
+
+func (p *esGoods) buildGoodsSaleProps(unqId string) *esGoods {
+	goodsItem := *p
+
+	propertyNames := make([]string, 0)
+	propertyImages := make([]string, 0)
+	for _, property := range GoodsSaleProperties {
+		if unqId == property.UniqueId {
+			propertyNames = append(propertyNames, property.BaseName)
+			propertyImages = append(propertyImages, property.Image)
+		}
+	}
+	goodsItem["main_prop_name"] = propertyNames
+	goodsItem["main_prop_image"] = propertyNames
+
+	return p
+}
+
+func (p *esGoods) buildGoodsProps(unqId string) *esGoods {
+	goodsItem := *p
+
+	propertyIds := make([]uint32, 0)
+	for _, property := range GoodsProperties {
+		if unqId == property.UniqueId {
+			propertyIds = append(propertyIds, uint32(property.ValueId))
+		}
+	}
+	goodsItem["property_ids"] = propertyIds
+
+	return p
+}
+
+func (p *esGoods) initCategory(categories interface{}) {
+	goodsItem := *p
+
+	categoryIds := make([]uint32, 0)
+	if _, ok := goodsItem["category_ids"]; !ok {
+		goodsItem["category_ids"] = make([]uint32, 0)
+	}
+
+	rValue := reflect.ValueOf(goodsItem["category_ids"])
+	if rValue.Kind() != reflect.Slice && rValue.Kind() != reflect.Array {
+		panic("商品解析出错，category_ids类型不正确")
+	}
+	for i := 0; i < rValue.Len(); i++ {
+		categoryIds = append(categoryIds, rValue.Index(i).Interface().(uint32))
+	}
+
+	categoryNames := make([]string, 0)
+	if _, ok := goodsItem["category_names"]; !ok {
+		goodsItem["category_names"] = make([]string, 0)
+	}
+	rValue = reflect.ValueOf(goodsItem["category_names"])
+	if rValue.Kind() != reflect.Slice && rValue.Kind() != reflect.Array {
+		panic("商品解析出错，category_names类型不正确")
+	}
+	for i := 0; i < rValue.Len(); i++ {
+		categoryNames = append(categoryNames, rValue.Index(i).Interface().(string))
+	}
+
+	rValue = reflect.ValueOf(categories)
+	if rValue.Kind() != reflect.Slice && rValue.Kind() != reflect.Array {
+		panic("商品解析出错，categories类型不正确")
+	}
+
+	for i := 0; i < rValue.Len(); i++ {
+		switch rValue.Index(i).Type() {
+		case reflect.TypeOf(models.GoodsCategory{}):
+			goodsCategory := rValue.Index(i).Interface().(models.GoodsCategory)
+			categoryIds = append(categoryIds, goodsCategory.GoodsCategoryId)
+			categoryNames = append(categoryNames, goodsCategory.GoodsCategoryName)
+		case reflect.TypeOf(models.GoodsSubCategory{}):
+			goodsSubCategory := rValue.Index(i).Interface().(models.GoodsSubCategory)
+			categoryIds = append(categoryIds, goodsSubCategory.GoodsCategoryId)
+			categoryNames = append(categoryNames, goodsSubCategory.GoodsCategoryName)
 		}
 	}
 
-	if len(subCategories) > 0{
-		os.Exit(1)
+	goodsItem["category_ids"] = categoryIds
+	goodsItem["category_names"] = categoryNames
+
+}
+
+func (p *esGoods) initSearchKeywords() {
+	goodsItem := *p
+
+	searchKeywords := make([]string, 0)
+
+	searchKeywords = append(searchKeywords, goodsItem["base_name"].(string))
+	searchKeywords = append(searchKeywords, goodsItem["codeno"].(string))
+
+	rType := reflect.TypeOf(goodsItem["tag_names"])
+	if rType.Kind() == reflect.Slice || rType.Kind() == reflect.Array {
+		//	标签名称
+		tagNames := goodsItem["tag_names"].([]string)
+		for _, tagName := range tagNames {
+			searchKeywords = append(searchKeywords, tagName)
+		}
 	}
-	return goodsItem
+
+	goodsItem["search_keywords"] = searchKeywords
+}
+
+func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[string]esGoods) bool {
+	if len(allOptionData) <= 0 {
+		return false
+	}
+
+	bulk := utils.ElasticsearchClient.Bulk()
+	for _, optionData := range allOptionData {
+		unqId := uniqueId(optionData["goods_id"], optionData["store_id"])
+		goods, ok := goodsLists[unqId]
+
+		if optionData["operation_type"] == "DELETE" {
+			request := elastic.NewBulkDeleteRequest().Index(INDEX).Id(unqId)
+			bulk.Add(request)
+		} else if ok {
+			request := elastic.NewBulkIndexRequest().Index(INDEX).Id(unqId).Doc(&goods)
+			bulk.Add(request)
+		}
+	}
+
+	if bulk.NumberOfActions() > 0 {
+		res, err := bulk.Do(context.TODO())
+		if err != nil {
+			panic(err)
+		}
+
+		for _, fail := range res.Failed() {
+			if fail.Error != nil {
+				fmt.Println(fail.Id, fail.Error)
+			}
+		}
+	}
+
+	return true
 }

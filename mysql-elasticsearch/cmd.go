@@ -1,12 +1,10 @@
 package mysql_elasticsearch
 
 import (
-	"context"
 	"databus/models"
 	"databus/utils"
 	"encoding/json"
 	"fmt"
-	"github.com/olivere/elastic/v7"
 	"github.com/panjf2000/ants/v2"
 	"os"
 	"os/signal"
@@ -14,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 )
 
 func Run() {
@@ -68,7 +65,8 @@ func execute(args interface{}) {
 	defer consumer.Close()
 	defer control.Done()
 
-	list := make([]map[string]interface{}, 0)
+	allOptionData := make([]map[string]interface{}, 0)
+	saveOptionData := make([]map[string]interface{}, 0)
 	for {
 
 		select {
@@ -101,19 +99,30 @@ func execute(args interface{}) {
 				goodsData["goods_id"] = item["id"]
 				goodsData["store_id"] = item["store_id"]
 				goodsData["operation_type"] = strings.ToUpper(optionData.OptionType)
-				list = append(list, goodsData)
+
+				allOptionData = append(allOptionData, goodsData)
+				if goodsData["operation_type"] != "DELETE" {
+					saveOptionData = append(saveOptionData, goodsData)
+				}
+
 			}
 
-			if len(list) >= 10 {
-				elasticsearchGoodsData(tableHash, list)
-				if *message.TopicPartition.Topic == "cn01_db.z_goods_00" {
+			if len(allOptionData) >= 100 {
+				goodsLists := elasticsearchGoodsData(tableHash, saveOptionData)
+				pushToElasticsearch(allOptionData, goodsLists)
+
+				allOptionData = make([]map[string]interface{}, 0)
+				saveOptionData = make([]map[string]interface{}, 0)
+
+				/*if *message.TopicPartition.Topic == "cn01_db.z_goods_00" {
 					time.Sleep(time.Second * 1)
 				} else {
 					time.Sleep(time.Second * 5)
-				}
+				}*/
 				/*bytes, _ := json.Marshal(list)
 				fmt.Println(string(bytes))*/
-				list = make([]map[string]interface{}, 0)
+
+
 			}
 
 
@@ -123,7 +132,7 @@ func execute(args interface{}) {
 
 }
 
-func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface{}) {
+func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface{}) map[string]esGoods {
 	//	获取商品的基本信息
 	list := make(goodsLists, 0)
 	list = models.GetGoods(tableHash, optionDatas)
@@ -164,20 +173,6 @@ func elasticsearchGoodsData(tableHash string, optionDatas []map[string]interface
 	GoodsProperties = models.GetGoodsProperties(tableHash, goodsIds, storeIds)
 
 	//	组装es商品数据
-	elasticsearchGoods := list.buildElasticsearchGoods(tableHash)
-
-	bulk := utils.ElasticsearchClient.Bulk()
-	for _, goods := range elasticsearchGoods {
-		request := elastic.NewBulkIndexRequest().Index("goods_base_test").Id(goods["unique_id"].(string)).Doc(goods)
-		bulk.Add(request)
-	}
-
-	if bulk.NumberOfActions() > 1 {
-		_, err := bulk.Do(context.TODO())
-		if err != nil {
-			panic(err)
-		}
-	}
-
+	return list.buildElasticsearchGoods(tableHash)
 
 }

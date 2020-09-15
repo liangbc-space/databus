@@ -2,7 +2,6 @@ package models
 
 import (
 	"databus/utils"
-	"fmt"
 	"strings"
 )
 
@@ -64,20 +63,18 @@ type Godos struct {
 
 //	商品标签
 type GoodsTag struct {
-	TagId   uint32 `gorm:"tag_id"`
-	TagName string `gorm:"tag_name"`
-	GoodsId uint32 `gorm:"goods_id"`
-	StoreId uint32 `gorm:"store_id"`
+	UniqueId string `gorm:"unique_id"`
+	TagId    uint32 `gorm:"tag_id"`
+	TagName  string `gorm:"tag_name"`
 }
 
 //	商品推荐
 type GoodsRecommend struct {
+	UniqueId  string `gorm:"unique_id"`
 	RecId     uint32 `gorm:"rec_id"`
 	RecIndex  uint32 `gorm:"rec_index"`
 	RecName   string `gorm:"rec_name"`
 	RecUpTime int32  `gorm:"rec_up_time"`
-	GoodsId   uint32 `gorm:"goods_id"`
-	StoreId   uint32 `gorm:"store_id"`
 }
 
 //	商品分类
@@ -88,31 +85,27 @@ type GoodsCategory struct {
 
 //	商品附属分类
 type GoodsSubCategory struct {
-	GoodsId           uint32 `gorm:"goods_id"`
-	StoreId           uint32 `gorm:"store_id"`
+	UniqueId          string `gorm:"unique_id"`
 	GoodsCategoryId   uint32 `gorm:"goods_category_id"`
 	GoodsCategoryName string `gorm:"goods_category_name"`
 }
 
 //	商品图片
 type GoodsOtherImage struct {
-	GoodsId uint32 `gorm:"goods_id"`
-	StoreId uint32 `gorm:"store_id"`
-	Image   string `gorm:"image"`
+	UniqueId string `gorm:"unique_id"`
+	Image    string `gorm:"image"`
 }
 
 //	商品销量属性？
 type GoodsSaleProperty struct {
+	UniqueId string `gorm:"unique_id"`
 	BaseName string `gorm:"base_name"`
 	Image    string `gorm:"image"`
-	GoodsId  uint32 `gorm:"goods_id"`
-	StoreId  uint32 `gorm:"store_id"`
 }
 
 //	商品属性
 type GoodsProperty struct {
-	GoodsId    uint32 `gorm:"goods_id"`
-	StoreId    uint32 `gorm:"store_id"`
+	UniqueId   string `gorm:"unique_id"`
 	PropertyId int32  `gorm:"property_id"`
 	ValueId    int32  `gorm:"value_id"`
 	ValueName  string `gorm:"value_name"`
@@ -152,10 +145,9 @@ func GetGoodsTags(goodsIds []string, storeIds []string) (goodsTags []GoodsTag) {
 	}
 
 	sql := `SELECT
+	CONCAT( CAST( r.store_id AS CHAR ), '-', CAST( r.goods_id AS CHAR ) ) AS unique_id,
 	tag_id AS tag_id,
-	base_name AS tag_name,
-	r.goods_id,
-	r.store_id
+	base_name AS tag_name
 FROM
 	z_goods_tag AS t
 	LEFT JOIN z_goods_tag_rel AS r ON t.id = r.tag_id 
@@ -173,12 +165,11 @@ func GetGoodsRecommends(goodsIds []string, storeIds []string) (goodsRecommends [
 	}
 
 	sql := `SELECT
+	CONCAT( CAST( rr.store_id AS CHAR ), '-', CAST( rr.goods_id AS CHAR ) ) AS unique_id,
 	r.id AS rec_id,
 	r.rec_index AS rec_index,
 	r.base_name AS rec_name,
-	rr.up_time AS rec_up_time,
-	rr.goods_id,
-	rr.store_id
+	rr.up_time AS rec_up_time
 FROM
 	z_goods_recommend AS r
 	LEFT JOIN z_goods_recommend_rel AS rr ON r.id = rr.goods_recommend_id 
@@ -220,8 +211,7 @@ func GetGoodsSubCategories(tableHash string, goodsIds []string, storeIds []strin
 	}
 
 	sql := `SELECT
-    r.goods_id,
-    r.store_id,
+	CONCAT( CAST( r.store_id AS CHAR ), '-', CAST( r.goods_id AS CHAR ) ) AS unique_id,
 	c.id AS goods_category_id,
 	c.base_name AS goods_category_name 
 FROM
@@ -236,8 +226,7 @@ WHERE
 
 	subCategories := make(map[string][]GoodsSubCategory)
 	for _, category := range goodsSubCategories {
-		uniqueId := fmt.Sprintf("%d-%d", category.StoreId, category.GoodsId)
-		subCategories[uniqueId] = append(subCategories[uniqueId], category)
+		subCategories[category.UniqueId] = append(subCategories[category.UniqueId], category)
 	}
 
 	return subCategories
@@ -249,8 +238,7 @@ func GetGoodsOtherImages(tableHash string, goodsIds []string, storeIds []string)
 	}
 
 	sql := `SELECT
-	goods_id,
-	store_id,
+	CONCAT( CAST( store_id AS CHAR ), '-', CAST( goods_id AS CHAR ) ) AS unique_id,
 	image 
 FROM
 	z_image_` + tableHash + ` 
@@ -273,10 +261,9 @@ func GetGoodsSaleProperties(tableHash string, goodsIds []string, storeIds []stri
 	}
 
 	sql := `SELECT
+	CONCAT( CAST( b.store_id AS CHAR ), '-', CAST( a.goods_id AS CHAR ) ) AS unique_id,
 	a.base_name,
-	a.image ,
-	a.goods_id,
-	b.store_id
+	a.image 
 FROM
 	z_goods_sale_prop_` + tableHash + ` a
 	LEFT JOIN z_goods_sale_prop_` + tableHash + ` b ON a.parent_id = b.id 
@@ -298,8 +285,7 @@ func GetGoodsProperties(tableHash string, goodsIds []string, storeIds []string) 
 	}
 
 	sql := `SELECT
-	goods_id,
-	store_id,
+	CONCAT( CAST( store_id AS CHAR ), '-', CAST( goods_id AS CHAR ) ) AS unique_id,
 	property_id AS property_id,
 	value_id AS value_id,
 	value_name AS value_name 
