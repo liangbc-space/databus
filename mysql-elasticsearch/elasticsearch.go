@@ -140,7 +140,7 @@ func (p *esGoods) buildGoodsRecommends(unqId string) *esGoods {
 
 			recIds = append(recIds, recommend.RecId)
 			recNames = append(recNames, recommend.RecName)
-			goodsItem[fmt.Sprintf("up_time_%d", recommend.RecIndex)] = recommend.RecUpTime
+			//goodsItem[fmt.Sprintf("up_time_%d", recommend.RecIndex)] = recommend.RecUpTime
 
 		}
 	}
@@ -298,9 +298,9 @@ func (p *esGoods) initSearchKeywords() {
 	goodsItem["search_keywords"] = searchKeywords
 }
 
-func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[string]esGoods) bool {
+func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[string]esGoods) (failedGoodsIds []uint32) {
 	if len(allOptionData) <= 0 {
-		return false
+		return failedGoodsIds[0:0]
 	}
 
 	bulk := utils.ElasticsearchClient.Bulk()
@@ -325,10 +325,13 @@ func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[
 
 		for _, fail := range res.Failed() {
 			if fail.Error != nil {
-				fmt.Println(fail.Id, fail.Error)
+				fmt.Println(fail.Id, *fail.Error)
+				goodsId := strings.Split(fail.Id, "-")
+				pkId, _ := strconv.Atoi(goodsId[1])
+				failedGoodsIds = append(failedGoodsIds, uint32(pkId))
 			}
 		}
 	}
 
-	return true
+	return failedGoodsIds
 }

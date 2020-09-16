@@ -117,7 +117,8 @@ func execute(args interface{}) {
 				sync(&allOptionData, &saveOptionData)
 			}
 
-
+			//	提交偏移量
+			consumer.Commit()
 		}
 
 	}
@@ -132,27 +133,26 @@ func sync(allOptionData *[]map[string]interface{}, saveOptionData *[]map[string]
 		goodsLists = buildEsGoods(*saveOptionData)
 	}
 
+	tableName := fmt.Sprintf("z_goods_%s", (*allOptionData)[0]["table_hash"].(string))
 	//	数据更新到es
-	pushToElasticsearch(*allOptionData, goodsLists)
+	failedIds := pushToElasticsearch(*allOptionData, goodsLists)
+	if len(failedIds) > 0 {
+		models.DB.Table(tableName).
+			Where("id in(?)", failedIds).
+			Update("modify_time", time.Now().Unix()+1)
+	}
 
-	fmt.Printf("%s:  %s  成功处理%d数据  耗时%dms\n",
+	fmt.Printf("%s： %s		成功%d条数据	失败%d条数据		耗时%dms\n",
 		time.Now().Format("2006/01/02 03:04:05.000"),
-		fmt.Sprintf("z_goods_%s", (*allOptionData)[0]["table_hash"].(string)),
-		len(*allOptionData),
+		tableName,
+		len(*allOptionData)-len(failedIds),
+		len(failedIds),
 		time.Now().UnixNano()/1e6-millisecond,
 	)
-	millisecond = time.Now().UnixNano() / 1e6
 
+	millisecond = time.Now().UnixNano() / 1e6
 	*allOptionData = (*allOptionData)[0:0]
 	*saveOptionData = (*saveOptionData)[0:0]
-
-	/*if *message.TopicPartition.Topic == "cn01_db.z_goods_00" {
-		time.Sleep(time.Second * 1)
-	} else {
-		time.Sleep(time.Second * 5)
-	}*/
-	/*bytes, _ := json.Marshal(list)
-	fmt.Println(string(bytes))*/
 }
 
 func buildEsGoods(optionDatas []map[string]interface{}) map[string]esGoods {

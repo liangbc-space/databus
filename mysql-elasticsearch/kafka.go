@@ -14,7 +14,7 @@ func getTopics() (topics []string) {
 	consumer := createConsumerInstance()
 	defer consumer.Close()
 
-	reg := regexp.MustCompile(`^cn01_db.z_goods_(\d{2})$`)
+	reg := regexp.MustCompile(`^cn01_db.z_goods_(\d{2,3})$`)
 	topics = consumer.GetTopics(reg)
 
 	return topics
@@ -22,7 +22,7 @@ func getTopics() (topics []string) {
 
 func pullMessages(consumer *utils.ConsumerInstance) (messages *kafka.Message) {
 
-	event := consumer.Poll(150)
+	event := consumer.Poll(100)
 	if event == nil {
 		return nil
 	}
