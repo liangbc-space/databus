@@ -4,8 +4,6 @@ import (
 	"databus/models"
 	mysql_elasticsearch "databus/mysql-elasticsearch"
 	"databus/utils"
-
-	//"databus/routers"
 	"databus/system"
 	"flag"
 )
