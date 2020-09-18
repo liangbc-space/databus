@@ -1,7 +1,7 @@
 package models
 
 import (
-	"databus/utils"
+	"github.com/liangbc-space/databus/utils"
 	"strings"
 )
 

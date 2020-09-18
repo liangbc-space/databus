@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"databus/system"
+	"github.com/liangbc-space/databus/system"
 	"github.com/olivere/elastic/v7"
 	"log"
 	"os"

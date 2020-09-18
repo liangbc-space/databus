@@ -1,8 +1,8 @@
 package mysql_elasticsearch
 
 import (
-	"databus/models"
-	"databus/utils"
+	"github.com/liangbc-space/databus/models"
+	"github.com/liangbc-space/databus/utils"
 	"encoding/json"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"

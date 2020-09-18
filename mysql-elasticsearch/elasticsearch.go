@@ -2,8 +2,8 @@ package mysql_elasticsearch
 
 import (
 	"context"
-	"databus/models"
-	"databus/utils"
+	"github.com/liangbc-space/databus/models"
+	"github.com/liangbc-space/databus/utils"
 	"fmt"
 	"github.com/olivere/elastic/v7"
 	"reflect"
