@@ -6,7 +6,6 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"os"
 	"regexp"
-	"time"
 )
 
 func getTopics() (topics []string) {
@@ -53,27 +52,13 @@ func pullMessages(consumer *utils.ConsumerInstance) (messages *kafka.Message) {
 	return messages
 }
 
-func consumerMessages(message *kafka.Message) {
-	/*fmt.Println("准备提交偏移量")
-	time.Sleep(time.Second * 2)*/
-	//consumer.Commit()
-
-	if *message.TopicPartition.Topic == "cn01_db_z_goods_01" {
-		time.Sleep(time.Second * 5)
-	} else {
-		time.Sleep(time.Second * 2)
-	}
-	fmt.Println(*message.TopicPartition.Topic)
-
-}
-
 func createConsumerInstance() (consumer *utils.ConsumerInstance) {
 	configMap := utils.ConsumerConfig{}
 	configMap["session.timeout.ms"] = 6000
 	configMap["auto.offset.reset"] = "earliest"
 
 	consumer = new(utils.ConsumerInstance)
-	consumer.Consumer = configMap.ConsumerInstance("test", false)
+	consumer.Consumer = configMap.ConsumerInstance("binlog-canal-elasticsearch", false)
 
 	return consumer
 }

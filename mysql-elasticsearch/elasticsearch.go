@@ -299,7 +299,7 @@ func (p *esGoods) initSearchKeywords() {
 }
 
 func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[string]esGoods) (failedGoodsIds []uint32) {
-	if len(allOptionData) <= 0 {
+	if len(allOptionData) < 1 || len(goodsLists) < 1{
 		return failedGoodsIds[0:0]
 	}
 

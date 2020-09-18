@@ -5,6 +5,7 @@ import (
 	"databus/utils"
 	"encoding/json"
 	"fmt"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/panjf2000/ants/v2"
 	"os"
 	"os/signal"
@@ -72,6 +73,7 @@ func execute(args interface{}) {
 
 	allOptionData := make([]map[string]interface{}, 0)
 	saveOptionData := make([]map[string]interface{}, 0)
+	var lastMessage *kafka.Message
 	for {
 
 		select {
@@ -83,9 +85,14 @@ func execute(args interface{}) {
 			if message == nil {
 				if len(allOptionData) > 0 {
 					sync(&allOptionData, &saveOptionData)
+
+					if lastMessage != nil {
+						consumer.CommitMessage(lastMessage)
+					}
 				}
 				continue
 			}
+			lastMessage = message
 
 			//optionData := make(map[string]interface{})
 			optionData := new(struct {
@@ -115,10 +122,10 @@ func execute(args interface{}) {
 
 			if len(allOptionData) >= 100 {
 				sync(&allOptionData, &saveOptionData)
+				//	提交偏移量
+				consumer.CommitMessage(lastMessage)
 			}
 
-			//	提交偏移量
-			consumer.Commit()
 		}
 
 	}

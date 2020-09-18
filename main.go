@@ -3,8 +3,8 @@ package main
 import (
 	"databus/models"
 	mysql_elasticsearch "databus/mysql-elasticsearch"
-	"databus/utils"
 	"databus/system"
+	"databus/utils"
 	"flag"
 )
 
@@ -25,7 +25,7 @@ func init() {
 	}
 
 	//	初始化redis连接池
-	utils.InitRedis()
+	//utils.InitRedis()
 
 	//	初始化elasticsearch链接
 	utils.InitElasticsearch()
