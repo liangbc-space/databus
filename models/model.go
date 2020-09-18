@@ -1,10 +1,10 @@
 package models
 
 import (
-	"github.com/liangbc-space/databus/system"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/liangbc-space/databus/system"
 	"time"
 )
 

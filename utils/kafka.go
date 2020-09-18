@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"github.com/liangbc-space/databus/system"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/liangbc-space/databus/system"
 	"os"
 	"regexp"
 	"strings"

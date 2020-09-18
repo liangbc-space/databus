@@ -2,9 +2,9 @@ package mysql_elasticsearch
 
 import (
 	"context"
+	"fmt"
 	"github.com/liangbc-space/databus/models"
 	"github.com/liangbc-space/databus/utils"
-	"fmt"
 	"github.com/olivere/elastic/v7"
 	"reflect"
 	"strconv"
@@ -299,7 +299,7 @@ func (p *esGoods) initSearchKeywords() {
 }
 
 func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[string]esGoods) (failedGoodsIds []uint32) {
-	if len(allOptionData) < 1 || len(goodsLists) < 1{
+	if len(allOptionData) < 1 || len(goodsLists) < 1 {
 		return failedGoodsIds[0:0]
 	}
 

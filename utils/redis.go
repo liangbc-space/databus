@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"github.com/liangbc-space/databus/system"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	"github.com/liangbc-space/databus/system"
 	"reflect"
 	"time"
 )

@@ -1,11 +1,11 @@
 package main
 
 import (
+	"flag"
 	"github.com/liangbc-space/databus/models"
 	mysql_elasticsearch "github.com/liangbc-space/databus/mysql-elasticsearch"
 	"github.com/liangbc-space/databus/system"
 	"github.com/liangbc-space/databus/utils"
-	"flag"
 )
 
 func init() {
