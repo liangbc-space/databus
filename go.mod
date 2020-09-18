@@ -1,4 +1,4 @@
-module databus
+module github.com/liangbc-space/databus
 
 go 1.15
 
