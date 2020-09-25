@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/liangbc-space/databus/models"
+	"github.com/liangbc-space/databus/system"
 	"github.com/liangbc-space/databus/utils"
+	"github.com/natefinch/lumberjack"
 	"github.com/panjf2000/ants/v2"
+	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"regexp"
@@ -69,6 +72,8 @@ func execute(args interface{}) {
 		return
 	}
 	tableHash := matches[1]
+	logger := logger()
+	defer logger.Sync()
 
 	allOptionData := make([]map[string]interface{}, 0)
 	saveOptionData := make([]map[string]interface{}, 0)
@@ -78,6 +83,7 @@ func execute(args interface{}) {
 		case <-control.SignalChan:
 			if len(allOptionData) > 0 {
 				sync(&allOptionData, &saveOptionData)
+				logger.Info("收到退出信号，所有消费数据处理完成")
 			}
 			return
 		default:
@@ -88,6 +94,9 @@ func execute(args interface{}) {
 					sync(&allOptionData, &saveOptionData)
 				}
 				continue
+			}
+			if system.ApplicationCfg.KafkaConfig.ConsumerLogs {
+				logger.Info(consumer.String()+"成功获取到数据", zap.String("message", message.String()))
 			}
 
 			//optionData := make(map[string]interface{})
@@ -201,4 +210,22 @@ func buildEsGoods(optionDatas []map[string]interface{}) map[string]esGoods {
 	//	组装es商品数据
 	return list.buildElasticsearchGoods(tableHash)
 
+}
+
+func logger() *zap.Logger {
+
+	loggerCfg := utils.LoggerCfg{
+		Level: zap.InfoLevel,
+		Hook: lumberjack.Logger{
+			Filename:   "logs/kafka-messages.log",
+			MaxAge:     5,
+			MaxBackups: 10,
+			MaxSize:    512,
+			Compress:   true,
+			LocalTime:  true,
+		},
+		WithCaller: false,
+	}
+
+	return loggerCfg.NewLogger()
 }
