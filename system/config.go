@@ -5,6 +5,12 @@ import (
 	"io/ioutil"
 )
 
+type LoggerConfig struct {
+	Level        string `yaml:"level"`
+	LogPath      string `yaml:"log_path"`
+	LogValidDays uint   `yaml:"log_valid_days"`
+}
+
 /*mysql连接配置*/
 type DatabaseConfig struct {
 	Host     string `yaml:"host"`
@@ -42,10 +48,13 @@ type ElasticsearchConfig struct {
 	Password string   `yaml:"password"`
 }
 
-type Configuration struct {
+type configuration struct {
+	AppName             string              `yaml:"app_name"`
 	Port                uint                `yaml:"port"`
 	DefaultPageSize     uint                `yaml:"default_page_size"`
 	JWTSecret           string              `yaml:"jwt_secret"`
+	Debug               bool                `yaml:"debug"`
+	LoggerConfig        LoggerConfig        `yaml:"logger"`
 	DbConfig            DatabaseConfig      `yaml:"mysql"`
 	RedisConfig         RedisConfig         `yaml:"redis"`
 	KafkaConfig         KafkaConfig         `yaml:"kafka"`
@@ -57,7 +66,7 @@ const (
 	httpServerPort  = 8080
 )
 
-var ApplicationCfg *Configuration
+var ApplicationCfg *configuration
 
 func LoadConfiguration(path string) error {
 	if ApplicationCfg != nil {
@@ -80,6 +89,17 @@ func LoadConfiguration(path string) error {
 
 	if ApplicationCfg.Port <= 0 {
 		ApplicationCfg.Port = httpServerPort
+	}
+
+	if ApplicationCfg.LoggerConfig == (LoggerConfig{}) {
+		if ApplicationCfg.Debug {
+			ApplicationCfg.LoggerConfig.Level = "debug"
+		} else {
+			ApplicationCfg.LoggerConfig.Level = "warn"
+		}
+
+		ApplicationCfg.LoggerConfig.LogPath = "logs/debug.log"
+		ApplicationCfg.LoggerConfig.LogValidDays = 10
 	}
 
 	return err

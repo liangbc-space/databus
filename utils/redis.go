@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	maxIdle            = 200  //	最大空闲连接数
-	maxActive          = 500  //	最大连接数
-	idleTimeoutSec     = 240  //	最大空闲连接时间，秒
-	dialReadTimeout    = 1000 //	最大读数据超时时间	毫秒
-	dialWriteTimeout          //	最大写数据超时时间	毫秒
-	dialConnectTimeout        //	最大连接数据超时时间	毫秒
+	MAX_IDLE             = 200  //	最大空闲连接数
+	MAX_ACTIVE           = 500  //	最大连接数
+	IDLE_TIMEOUT_SEC     = 240  //	最大空闲连接时间，秒
+	DIAL_READ_TIMEOUT    = 1000 //	最大读数据超时时间	毫秒
+	DIAL_WRITE_TIMEOUT          //	最大写数据超时时间	毫秒
+	DIAL_CONNECT_TIMEOUT        //	最大连接数据超时时间	毫秒
 )
 
 type redisClient struct {
@@ -31,17 +31,17 @@ func InitRedis() {
 
 	RedisClient = new(redisClient)
 	RedisClient.Pool = &redis.Pool{
-		MaxIdle:     maxIdle,
-		MaxActive:   maxActive,
-		IdleTimeout: time.Duration(idleTimeoutSec),
+		MaxIdle:     MAX_IDLE,
+		MaxActive:   MAX_ACTIVE,
+		IdleTimeout: time.Duration(IDLE_TIMEOUT_SEC),
 		Wait:        false,
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial(
 				"tcp",
 				fmt.Sprintf("%s:%d", redisConfig.Host, redisConfig.Port),
-				redis.DialReadTimeout(time.Duration(dialReadTimeout)*time.Millisecond),
-				redis.DialWriteTimeout(time.Duration(dialWriteTimeout)*time.Millisecond),
-				redis.DialConnectTimeout(time.Duration(dialConnectTimeout)*time.Millisecond),
+				redis.DialReadTimeout(time.Duration(DIAL_READ_TIMEOUT)*time.Millisecond),
+				redis.DialWriteTimeout(time.Duration(DIAL_WRITE_TIMEOUT)*time.Millisecond),
+				redis.DialConnectTimeout(time.Duration(DIAL_CONNECT_TIMEOUT)*time.Millisecond),
 				redis.DialDatabase(redisConfig.Db),
 				redis.DialPassword(redisConfig.Password),
 			)

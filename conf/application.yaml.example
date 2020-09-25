@@ -1,6 +1,13 @@
+app_name: databus
 port: 8080  #http监听服务端口，默认8080
 default_page_size: 10  #分页单页数据条数，默认10
 jwt_secret: GCGFAetuHQDP3FCy  # jwt鉴权密码
+debug: true #debug调试模式
+
+logger:
+  level: debug  #日志级别   debug|info|warn|error
+  log_path: logs/debug.log #日志文件路径
+  log_valid_days: 7 #日志有效期（天）
 
 mysql:
   host: mysql
@@ -26,7 +33,6 @@ kafka:
   brokers:
     - kafka1:9092
   broker_address_family: "v4"   #broker是ipv4还是ipv6
-
 
 elasticsearch:
   urls:
