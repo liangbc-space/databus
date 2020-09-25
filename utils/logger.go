@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MAX_SIZE       = 1  //日志切割：日志最大大小（M）
+	MAX_SIZE       = 128  //日志切割：日志最大大小（M）
 	MAX_BACKUPS    = 50 //日志切割：日志最大备份数
 	LOG_VAILD_DAYS = 10 //日志切割：日志最大保留多少天
 )
