@@ -39,6 +39,7 @@ type RedisConfig struct {
 type KafkaConfig struct {
 	Brokers             []string `yaml:"brokers"`
 	BrokerAddressFamily string   `yaml:"broker_address_family"`
+	ConsumerLogs        bool     `yaml:"consumer_logs"`
 }
 
 /*elasticsearch连接配置*/

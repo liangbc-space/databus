@@ -19,10 +19,7 @@ func init() {
 	}
 
 	//	初始化mysql数据库
-	if _, err := models.InitDB(); err != nil {
-		panic(err)
-		return
-	}
+	models.InitDB()
 
 	//	初始化redis连接池
 	//utils.InitRedis()

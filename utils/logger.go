@@ -10,15 +10,16 @@ import (
 )
 
 const (
-	MAX_SIZE       = 128  //日志切割：日志最大大小（M）
-	MAX_BACKUPS    = 50 //日志切割：日志最大备份数
-	LOG_VAILD_DAYS = 10 //日志切割：日志最大保留多少天
+	MAX_SIZE       = 128 //日志切割：日志最大大小（M）
+	MAX_BACKUPS    = 10  //日志切割：日志最大备份数
+	LOG_VAILD_DAYS = 10  //日志切割：日志最大保留多少天
 )
 
 type LoggerCfg struct {
-	Level      zapcore.Level
-	Hook       lumberjack.Logger //lumberjack日志切割器
-	WithCaller bool              //是否开启堆栈跟踪
+	Level           zapcore.Level
+	Hook            lumberjack.Logger //lumberjack日志切割器
+	WithCaller      bool              //是否开启堆栈跟踪
+	OutputToConsole bool              //输出到控制台
 }
 
 func NewDefaultLogger() *zap.Logger {
@@ -40,7 +41,6 @@ func NewDefaultLogger() *zap.Logger {
 		} else {
 			cfg.Level = zap.WarnLevel
 		}
-
 	}
 
 	cfg.Hook = lumberjack.Logger{
@@ -49,6 +49,7 @@ func NewDefaultLogger() *zap.Logger {
 	}
 	if system.ApplicationCfg.Debug {
 		cfg.WithCaller = true
+		cfg.OutputToConsole = true
 	}
 
 	return cfg.NewLogger()
@@ -58,7 +59,7 @@ func (cfg LoggerCfg) NewLogger() *zap.Logger {
 	cfg = cfg.initCfg()
 
 	writer := make([]zapcore.WriteSyncer, 0)
-	if system.ApplicationCfg.Debug {
+	if cfg.OutputToConsole {
 		writer = append(writer, zapcore.AddSync(os.Stdout))
 	}
 

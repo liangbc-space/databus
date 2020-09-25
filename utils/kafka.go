@@ -1,10 +1,9 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/liangbc-space/databus/system"
-	"os"
+	"go.uber.org/zap"
 	"regexp"
 	"strings"
 )
@@ -17,7 +16,7 @@ type ConsumerInstance struct {
 	*kafka.Consumer
 }
 
-func (consumerConfig ConsumerConfig) ConsumerInstance(groupId string, autoCommitOffset bool) (consumer *kafka.Consumer) {
+func (consumerConfig ConsumerConfig) ConsumerInstance(groupId string, autoCommitOffset bool) *kafka.Consumer {
 	configMap := kafka.ConfigMap{
 		"bootstrap.servers":     strings.Join(system.ApplicationCfg.KafkaConfig.Brokers, ","),
 		"broker.address.family": system.ApplicationCfg.KafkaConfig.BrokerAddressFamily,
@@ -33,10 +32,13 @@ func (consumerConfig ConsumerConfig) ConsumerInstance(groupId string, autoCommit
 	}
 	configMap["enable.auto.commit"] = autoCommitOffset
 
-	var err error
-	if consumer, err = kafka.NewConsumer(&configMap); err != nil {
-		fmt.Fprintf(os.Stderr, "创建消费者连接失败: %s\n", err)
-		os.Exit(1)
+	consumer, err := kafka.NewConsumer(&configMap)
+	if err != nil {
+		logger := NewDefaultLogger()
+		defer logger.Sync()
+
+		logger.Panic("创建消费者连接失败："+err.Error(), zap.Reflect("connConfig", configMap))
+		return nil
 	}
 
 	return consumer
@@ -46,8 +48,11 @@ func (consumer *ConsumerInstance) GetTopics(reg *regexp.Regexp) (topics []string
 	metadata, err := consumer.GetMetadata(nil, true, 100)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "获取meta信息失败: %s\n", err)
-		os.Exit(1)
+		logger := NewDefaultLogger()
+		defer logger.Sync()
+
+		logger.Panic("获取meta信息失败："+err.Error(), zap.String("connInfo", consumer.String()))
+		return nil
 	}
 
 	for _, topicMetadata := range metadata.Topics {
@@ -62,4 +67,3 @@ func (consumer *ConsumerInstance) GetTopics(reg *regexp.Regexp) (topics []string
 
 	return topics
 }
-

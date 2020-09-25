@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"github.com/liangbc-space/databus/system"
+	"go.uber.org/zap"
 	"reflect"
 	"time"
 )
@@ -36,15 +37,27 @@ func InitRedis() {
 		IdleTimeout: time.Duration(IDLE_TIMEOUT_SEC),
 		Wait:        false,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial(
+			address := fmt.Sprintf("%s:%d", redisConfig.Host, redisConfig.Port)
+
+			conn, err := redis.Dial(
 				"tcp",
-				fmt.Sprintf("%s:%d", redisConfig.Host, redisConfig.Port),
+				address,
 				redis.DialReadTimeout(time.Duration(DIAL_READ_TIMEOUT)*time.Millisecond),
 				redis.DialWriteTimeout(time.Duration(DIAL_WRITE_TIMEOUT)*time.Millisecond),
 				redis.DialConnectTimeout(time.Duration(DIAL_CONNECT_TIMEOUT)*time.Millisecond),
 				redis.DialDatabase(redisConfig.Db),
 				redis.DialPassword(redisConfig.Password),
 			)
+
+			if err != nil {
+				logger := NewDefaultLogger()
+				defer logger.Sync()
+
+				logger.Panic("初始化redis连接池失败："+err.Error(), zap.String("address", address))
+				return nil, err
+			}
+
+			return conn, err
 		},
 	}
 }

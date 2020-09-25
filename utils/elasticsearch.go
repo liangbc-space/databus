@@ -3,6 +3,7 @@ package utils
 import (
 	"github.com/liangbc-space/databus/system"
 	"github.com/olivere/elastic/v7"
+	"go.uber.org/zap"
 	"log"
 	"os"
 )
@@ -23,7 +24,14 @@ func InitElasticsearch() {
 	)
 
 	if err != nil {
-		panic(err)
+		logger := NewDefaultLogger()
+		defer logger.Sync()
+
+		logger.Panic("初始化ES连接失败："+err.Error(),
+			zap.Strings("urls", config.Urls),
+			zap.String("username", config.Username),
+			zap.String("password", config.Password),
+		)
 	}
 
 	ElasticsearchClient = client

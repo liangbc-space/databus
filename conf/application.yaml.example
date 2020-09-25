@@ -33,6 +33,7 @@ kafka:
   brokers:
     - kafka1:9092
   broker_address_family: "v4"   #broker是ipv4还是ipv6
+  consumer_logs: true   #是否保存消费日志
 
 elasticsearch:
   urls:

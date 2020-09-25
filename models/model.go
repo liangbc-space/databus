@@ -5,6 +5,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/liangbc-space/databus/system"
+	"github.com/liangbc-space/databus/utils"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -16,7 +18,7 @@ type BaseModel struct {
 
 var DB *gorm.DB
 
-func InitDB() (*gorm.DB, error) {
+func InitDB() {
 	var err error
 
 	DbConfig := system.ApplicationCfg.DbConfig
@@ -24,7 +26,10 @@ func InitDB() (*gorm.DB, error) {
 
 	DB, err = gorm.Open("mysql", dsn)
 	if err != nil {
-		return nil, err
+		logger := utils.NewDefaultLogger()
+		defer logger.Sync()
+
+		logger.Panic("初始化MYSQL连接池失败："+err.Error(), zap.String("dsn", dsn))
 	}
 
 	//	全局禁用负数表名
@@ -37,8 +42,6 @@ func InitDB() (*gorm.DB, error) {
 
 	DB.DB().SetMaxIdleConns(int(DbConfig.Pool.MaxIdle)) //连接池最大允许的空闲连接数，如果没有sql任务需要执行的连接数大于20，超过的连接会被连接池关闭
 	DB.DB().SetMaxOpenConns(int(DbConfig.Pool.MaxOpen)) //设置数据库连接池最大连接数
-
-	return DB, err
 
 }
 

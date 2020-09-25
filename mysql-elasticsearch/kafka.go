@@ -3,10 +3,15 @@ package mysql_elasticsearch
 import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/liangbc-space/databus/system"
 	"github.com/liangbc-space/databus/utils"
+	"github.com/natefinch/lumberjack"
+	"go.uber.org/zap"
 	"os"
 	"regexp"
 )
+
+var logger *zap.Logger
 
 func getTopics() (topics []string) {
 
@@ -28,6 +33,14 @@ func pullMessages(consumer *utils.ConsumerInstance) (messages *kafka.Message) {
 
 	switch e := event.(type) {
 	case *kafka.Message:
+		if system.ApplicationCfg.KafkaConfig.ConsumerLogs {
+			if logger == nil {
+				logger = getLogger()
+			}
+
+			logger.Info(consumer.String()+"成功消费到数据", zap.String("message", e.String()))
+		}
+
 		return e
 		//consumerMessages(e)
 		/*fmt.Printf("%% Message on %s:\n%s\n",
@@ -61,4 +74,22 @@ func createConsumerInstance() (consumer *utils.ConsumerInstance) {
 	consumer.Consumer = configMap.ConsumerInstance("binlog-canal-elasticsearch", false)
 
 	return consumer
+}
+
+func getLogger() *zap.Logger {
+
+	loggerCfg := utils.LoggerCfg{
+		Level: zap.InfoLevel,
+		Hook: lumberjack.Logger{
+			Filename:   "logs/kafka-messages.log",
+			MaxAge:     5,
+			MaxBackups: 10,
+			MaxSize:    512,
+			Compress:   true,
+			LocalTime:  true,
+		},
+		WithCaller: false,
+	}
+
+	return loggerCfg.NewLogger()
 }

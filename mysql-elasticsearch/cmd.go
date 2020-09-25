@@ -3,7 +3,6 @@ package mysql_elasticsearch
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/liangbc-space/databus/models"
 	"github.com/liangbc-space/databus/utils"
 	"github.com/panjf2000/ants/v2"
@@ -73,11 +72,13 @@ func execute(args interface{}) {
 
 	allOptionData := make([]map[string]interface{}, 0)
 	saveOptionData := make([]map[string]interface{}, 0)
-	var lastMessage *kafka.Message
 	for {
 
 		select {
 		case <-control.SignalChan:
+			if len(allOptionData) > 0 {
+				sync(&allOptionData, &saveOptionData)
+			}
 			return
 		default:
 			//	获取kafka消息
@@ -85,14 +86,9 @@ func execute(args interface{}) {
 			if message == nil {
 				if len(allOptionData) > 0 {
 					sync(&allOptionData, &saveOptionData)
-
-					if lastMessage != nil {
-						consumer.CommitMessage(lastMessage)
-					}
 				}
 				continue
 			}
-			lastMessage = message
 
 			//optionData := make(map[string]interface{})
 			optionData := new(struct {
@@ -122,9 +118,8 @@ func execute(args interface{}) {
 
 			if len(allOptionData) >= 100 {
 				sync(&allOptionData, &saveOptionData)
-				//	提交偏移量
-				consumer.CommitMessage(lastMessage)
 			}
+			consumer.Commit()
 
 		}
 
