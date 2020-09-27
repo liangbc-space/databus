@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/md5"
 	"encoding/hex"
+	"io/ioutil"
 	"regexp"
 )
 
@@ -21,6 +24,7 @@ func Md5(str string) string {
 	return hex.EncodeToString(hash.Sum([]byte(str)))
 }
 
+//	数组|slice去重和空
 func RemoveRepeat(list []string) []string {
 	output := make([]string, 0)
 	m := make(map[string]interface{})
@@ -34,6 +38,7 @@ func RemoveRepeat(list []string) []string {
 	return output
 }
 
+//	检测元素在array|slice中存在
 func In(list []interface{}, item interface{}) (isIn bool) {
 	if len(list) < 1 {
 		return false
@@ -49,3 +54,31 @@ func In(list []interface{}, item interface{}) (isIn bool) {
 
 	return isIn
 }
+
+//	gzip压缩
+func GzipEncode(input []byte) ([]byte, error) {
+	buffer := new(bytes.Buffer)
+	writer := gzip.NewWriter(buffer)
+	defer writer.Close()
+
+	if _, err := writer.Write(input); err != nil {
+		return nil, err
+	}
+	if err := writer.Flush(); err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+//	gzip解压
+func GzipDecode(input []byte) ([]byte, error) {
+	reader, err := gzip.NewReader(bytes.NewReader(input))
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	return ioutil.ReadAll(reader)
+}
+

@@ -1,6 +1,7 @@
 package mysql_elasticsearch
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/liangbc-space/databus/models"
@@ -96,7 +97,15 @@ func execute(args interface{}) {
 				continue
 			}
 			if system.ApplicationCfg.KafkaConfig.ConsumerLogs {
-				logger.Info(consumer.String()+"成功获取到数据", zap.String("message", message.String()))
+				gz, err := utils.GzipEncode(message.Value)
+				if err != nil {
+					utils.NewDefaultLogger().Panic("gzip数据压缩错误"+err.Error(),
+						zap.ByteString("gzData", message.Value),
+					)
+				}
+				logger.Info(consumer.String()+"成功获取到数据",
+					zap.String("message", base64.StdEncoding.EncodeToString(gz)),
+				)
 			}
 
 			//optionData := make(map[string]interface{})
@@ -154,7 +163,7 @@ func sync(allOptionData *[]map[string]interface{}, saveOptionData *[]map[string]
 	}
 
 	fmt.Printf("%s： %s		成功%d条数据	失败%d条数据		耗时%dms\n",
-		time.Now().Format("2006/01/02 03:04:05.000"),
+		time.Now().Format("2006/01/02 15:04:05.000"),
 		tableName,
 		len(*allOptionData)-len(failedIds),
 		len(failedIds),
