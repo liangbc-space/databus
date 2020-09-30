@@ -13,25 +13,29 @@ var ElasticsearchClient *elastic.Client
 func InitElasticsearch() {
 	config := system.ApplicationCfg.ElasticsearchConfig
 
-	client, err := elastic.NewClient(
+	connOptions := []elastic.ClientOptionFunc{
 		elastic.SetURL(config.Urls...),
-		elastic.SetBasicAuth(config.Username, config.Password),
 
 		elastic.SetSniff(false),
 		elastic.SetGzip(true),
 		elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
-		elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)),
-	)
+	}
+
+	if config.Username != "" {
+		connOptions = append(connOptions, elastic.SetBasicAuth(config.Username, config.Password))
+	}
+
+	if system.ApplicationCfg.Debug {
+		connOptions = append(connOptions, elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)))
+	}
+
+	client, err := elastic.NewClient(connOptions...)
 
 	if err != nil {
 		logger := NewDefaultLogger()
 		defer logger.Sync()
 
-		logger.Panic("初始化ES连接失败："+err.Error(),
-			zap.Strings("urls", config.Urls),
-			zap.String("username", config.Username),
-			zap.String("password", config.Password),
-		)
+		logger.Panic("初始化ES连接失败："+err.Error(), zap.Reflect("connOptions", connOptions))
 	}
 
 	ElasticsearchClient = client
