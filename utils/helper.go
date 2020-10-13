@@ -81,4 +81,3 @@ func GzipDecode(input []byte) ([]byte, error) {
 
 	return ioutil.ReadAll(reader)
 }
-

@@ -7,6 +7,7 @@ import (
 	"github.com/liangbc-space/databus/models"
 	"github.com/liangbc-space/databus/system"
 	"github.com/liangbc-space/databus/utils"
+	"github.com/liangbc-space/databus/utils/exception"
 	"github.com/natefinch/lumberjack"
 	"github.com/panjf2000/ants/v2"
 	"go.uber.org/zap"
@@ -28,9 +29,15 @@ func Run() {
 
 	control := utils.SignalEvent(signalChan, signalHandleFunc)
 
-	p, err := ants.NewPoolWithFunc(len(topics), execute)
+	p, err := ants.NewPoolWithFunc(len(topics), func(args interface{}) {
+		exception.Try(func() {
+			execute(args)
+		}).Catch(func(ex exception.Exception) {
+
+		})
+	})
 	if err != nil {
-		panic(err)
+		exception.Throw("创建协程池失败："+err.Error(), 1)
 	}
 
 	for _, topic := range topics {
@@ -41,7 +48,7 @@ func Run() {
 		args["signal_control"] = control
 
 		if err := p.Invoke(args); err != nil {
-			panic(err)
+			exception.Throw("协程执行任务失败："+err.Error(), 1)
 		}
 	}
 
@@ -63,7 +70,7 @@ func execute(args interface{}) {
 
 	consumer := createConsumerInstance()
 	if err := consumer.Subscribe(topic, nil); err != nil {
-		panic(err)
+		exception.Throw("订阅kafka消息失败："+err.Error(), 1)
 	}
 	defer consumer.Close()
 
@@ -102,6 +109,7 @@ func execute(args interface{}) {
 					utils.NewDefaultLogger().Panic("gzip数据压缩错误"+err.Error(),
 						zap.ByteString("gzData", message.Value),
 					)
+					exception.Throw("gzip数据压缩错误："+err.Error(), 2)
 				}
 				logger.Info(consumer.String()+"成功获取到数据",
 					zap.String("message", base64.StdEncoding.EncodeToString(gz)),

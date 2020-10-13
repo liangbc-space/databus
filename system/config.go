@@ -1,6 +1,7 @@
 package system
 
 import (
+	"github.com/liangbc-space/databus/utils/exception"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 )
@@ -69,19 +70,19 @@ const (
 
 var ApplicationCfg *configuration
 
-func LoadConfiguration(path string) error {
+func LoadConfiguration(path string) {
 	if ApplicationCfg != nil {
-		return nil
+		return
 	}
 
 	configData, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		exception.Throw("初始化系统配置失败："+err.Error(), 1)
 	}
 
 	err = yaml.Unmarshal(configData, &ApplicationCfg)
 	if err != nil {
-		return err
+		exception.Throw("初始化系统配置失败："+err.Error(), 1)
 	}
 
 	if ApplicationCfg.DefaultPageSize <= 0 {
@@ -102,7 +103,5 @@ func LoadConfiguration(path string) error {
 		ApplicationCfg.LoggerConfig.LogPath = "logs/debug.log"
 		ApplicationCfg.LoggerConfig.LogValidDays = 10
 	}
-
-	return err
 
 }

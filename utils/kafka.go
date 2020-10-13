@@ -3,6 +3,7 @@ package utils
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/liangbc-space/databus/system"
+	"github.com/liangbc-space/databus/utils/exception"
 	"go.uber.org/zap"
 	"regexp"
 	"strings"
@@ -38,6 +39,7 @@ func (consumerConfig ConsumerConfig) ConsumerInstance(groupId string, autoCommit
 		defer logger.Sync()
 
 		logger.Panic("创建消费者连接失败："+err.Error(), zap.Reflect("connConfig", configMap))
+		exception.Throw("创建消费者连接失败："+err.Error(), 1)
 		return nil
 	}
 
@@ -52,6 +54,7 @@ func (consumer *ConsumerInstance) GetTopics(reg *regexp.Regexp) (topics []string
 		defer logger.Sync()
 
 		logger.Panic("获取meta信息失败："+err.Error(), zap.String("connInfo", consumer.String()))
+		exception.Throw("获取meta信息失败："+err.Error(), 1)
 		return nil
 	}
 

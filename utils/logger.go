@@ -49,7 +49,6 @@ func NewDefaultLogger() *zap.Logger {
 	}
 	if system.ApplicationCfg.Debug {
 		cfg.WithCaller = true
-		cfg.OutputToConsole = true
 	}
 
 	return cfg.NewLogger()

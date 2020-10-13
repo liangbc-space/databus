@@ -1,63 +1,94 @@
 package exception
 
 import (
-	"fmt"
-	"reflect"
-	"runtime/debug"
+	"runtime"
 )
 
+type caller struct {
+	pc   uintptr
+	file string
+	line int
+}
+
 type Exception struct {
-	Message string
-	Code int
-	StackTrace []byte
+	message    string
+	code       int
+	stackTrace []byte
+	*caller
 }
 
-
-
-type catchHandler struct {
-	hasCatch bool
-	catch interface{}
+type catch struct {
+	hasCatch  bool
+	exception Exception
 }
 
-type CatchHandler interface {
-	Catch(interface{}, func(ex interface{})) *catchHandler
-	FinalHandler
-}
-
-func Throw(message string,code int, ex interface{}) {
-	/*b := make([]byte, 1<<16)
-	runtime.Stack(b, true)*/
-
-	if ex == nil {
-		ex = new(Exception)
-	}
-
-	rValue := reflect.ValueOf(ex)
-	fmt.Println(rValue.Type())
-
-	//rValue.FieldByName("Message").SetString(message)
-	fmt.Println(rValue.FieldByName("Message"))
-	rValue.FieldByName("Code").Set(reflect.ValueOf(code))
-	rValue.FieldByName("StackTrace").SetBytes(debug.Stack())
-	fmt.Println(ex)
-
-	panic(ex)
-}
-
-type FinalHandler interface {
+type finalHandler interface {
 	Finally(handler func())
 }
 
-func Try(handler func()) *catchHandler {
-	ch := new(catchHandler)
+type exceptionHandler interface {
+	StackTrace() string
+	Message() string
+	Code() int
+	File() string
+	Line() int
+	Pc() uintptr
+}
+
+type catchHandler interface {
+	Catch(func(ex Exception)) finalHandler
+	finalHandler
+}
+
+func Throw(message string, code int) {
+	b := make([]byte, 1<<16)
+	runtime.Stack(b, false)
+
+	pc, file, line, _ := runtime.Caller(1)
+	panic(Exception{
+		message,
+		code,
+		b,
+		&caller{pc, file, line},
+	})
+}
+
+func Try(handler func()) catchHandler {
+	ch := new(catch)
 
 	defer func() {
 		defer func() {
 			r := recover()
-			if r != nil {
-				ch.catch = r
-				ch.hasCatch = true
+			if r == nil {
+				return
 			}
+
+			ex := Exception{}
+
+			if exception, ok := r.(Exception); ok {
+				ex = exception
+			} else {
+				pc, file, line, _ := runtime.Caller(2)
+				if err, ok := r.(runtime.Error); ok {
+					ex.message = err.Error()
+					pc, file, line, _ = runtime.Caller(3)
+				} else if err, ok := r.(error); ok {
+					ex.message = err.Error()
+				} else if message, ok := r.(string); ok {
+					ex.message = message
+				} else {
+					panic(r)
+				}
+
+				b := make([]byte, 1<<16)
+				runtime.Stack(b, false)
+				ex.stackTrace = b
+				ex.caller = &caller{pc, file, line}
+
+			}
+
+			ch.exception = ex
+			ch.hasCatch = true
 		}()
 		handler()
 	}()
@@ -65,19 +96,43 @@ func Try(handler func()) *catchHandler {
 	return ch
 }
 
-func (t *catchHandler) Catch(ex interface{}, handler func(interface{})) *catchHandler {
-	//<4>如果传入的error类型和发生异常的类型一致，则执行异常处理器，并将hasCatch修改为true代表已捕捉异常
-	if reflect.TypeOf(ex) == reflect.TypeOf(t.catch) {
-		handler(t.catch)
+func (t *catch) Catch(handler func(exception Exception)) finalHandler {
+	if t.hasCatch {
+		handler(t.exception)
 		t.hasCatch = false
 	}
+
 	return t
 }
 
-func (t *catchHandler) Finally(handler func()) {
+func (t *catch) Finally(handler func()) {
 	defer handler()
 
 	if t != nil && t.hasCatch {
-
+		panic(t.exception)
 	}
+}
+
+func (ex Exception) Pc() uintptr {
+	return ex.pc
+}
+
+func (ex Exception) File() string {
+	return ex.file
+}
+
+func (ex Exception) Line() int {
+	return ex.line
+}
+
+func (ex Exception) StackTrace() string {
+	return string(ex.stackTrace)
+}
+
+func (ex Exception) Message() string {
+	return ex.message
+}
+
+func (ex Exception) Code() int {
+	return ex.code
 }

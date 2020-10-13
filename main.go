@@ -4,45 +4,45 @@ import (
 	"flag"
 	"fmt"
 	"github.com/liangbc-space/databus/models"
+	mysql_elasticsearch "github.com/liangbc-space/databus/mysql-elasticsearch"
 	"github.com/liangbc-space/databus/system"
 	"github.com/liangbc-space/databus/utils"
 	"github.com/liangbc-space/databus/utils/exception"
+	"os"
 )
 
 func init() {
-	//	初始化配置
-	configPath := flag.String("systemConfig", "conf/application.yaml", "system config file path")
-	flag.Parse()
+	exception.Try(func() {
+		//	初始化配置
+		configPath := flag.String("systemConfig", "conf/application.yaml", "system config file path")
+		flag.Parse()
+		system.LoadConfiguration(*configPath)
 
-	if err := system.LoadConfiguration(*configPath); err != nil {
-		panic(err)
-		return
-	}
+		//	初始化mysql数据库
+		models.InitDB()
 
-	//	初始化mysql数据库
-	models.InitDB()
+		//	初始化redis连接池
+		//utils.InitRedis()
 
-	//	初始化redis连接池
-	//utils.InitRedis()
+		//	初始化elasticsearch链接
+		utils.InitElasticsearch()
+	}).Catch(func(ex exception.Exception) {
+		fmt.Printf("程序执行异常：%s	文件：%s:%d\n",
+			ex.Message(), ex.File(), ex.Line(),
+		)
+		os.Exit(ex.Code())
+	})
 
-	//	初始化elasticsearch链接
-	utils.InitElasticsearch()
 }
 
 func main() {
 
 	defer models.DB.Close()
 
-	//mysql_elasticsearch.Run()
-	exception.Throw("error2", 0,nil)
-	return
 	exception.Try(func() {
-		//  指定了异常代码为2，错误信息为error2
-		exception.Throw("error2", 0,exception.Exception{})
-	}).Catch(exception.Exception{}, func(e interface{}) {
-		fmt.Println(e)
-	}).Finally(func() {
-		fmt.Println(123123)
+		mysql_elasticsearch.Run()
+	}).Catch(func(ex exception.Exception) {
+		fmt.Println(ex.Message())
 	})
 
 }
