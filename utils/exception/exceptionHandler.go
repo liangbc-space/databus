@@ -27,16 +27,16 @@ type finalHandler interface {
 }
 
 type exceptionHandler interface {
-	StackTrace() string
 	Message() string
 	Code() int
 	File() string
 	Line() int
+	StackTrace() string
 	Pc() uintptr
 }
 
 type catchHandler interface {
-	Catch(func(ex Exception)) finalHandler
+	Catch(handler func(ex Exception)) finalHandler
 	finalHandler
 }
 
@@ -79,12 +79,11 @@ func Try(handler func()) catchHandler {
 				} else {
 					panic(r)
 				}
+				ex.caller = &caller{pc, file, line}
 
 				b := make([]byte, 1<<16)
 				runtime.Stack(b, false)
 				ex.stackTrace = b
-				ex.caller = &caller{pc, file, line}
-
 			}
 
 			ch.exception = ex

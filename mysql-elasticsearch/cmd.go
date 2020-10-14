@@ -33,7 +33,10 @@ func Run() {
 		exception.Try(func() {
 			execute(args)
 		}).Catch(func(ex exception.Exception) {
-
+			fmt.Printf("消费kafka数据同步到ES异常：%s	文件：%s:%d\n",
+				ex.Message(), ex.File(), ex.Line(),
+			)
+			os.Exit(ex.Code())
 		})
 	})
 	if err != nil {
@@ -103,6 +106,9 @@ func execute(args interface{}) {
 				}
 				continue
 			}
+			//	提交消费偏移量
+			consumer.Commit()
+
 			if system.ApplicationCfg.KafkaConfig.ConsumerLogs {
 				gz, err := utils.GzipEncode(message.Value)
 				if err != nil {
@@ -122,7 +128,7 @@ func execute(args interface{}) {
 				OptionType string      `json:"type"`
 			})
 			if err := json.Unmarshal(message.Value, &optionData); err != nil {
-				panic(err)
+				exception.Throw("kafka消息解析失败："+err.Error(), 1)
 			}
 
 			data := optionData.Data.([]interface{})
@@ -133,6 +139,7 @@ func execute(args interface{}) {
 
 				goodsData["goods_id"] = item["id"]
 				goodsData["store_id"] = item["store_id"]
+				goodsData["_unq"] = item["store_id"]
 				goodsData["operation_type"] = strings.ToUpper(optionData.OptionType)
 				goodsData["table_hash"] = tableHash
 
@@ -145,7 +152,6 @@ func execute(args interface{}) {
 			if len(allOptionData) >= 100 {
 				sync(&allOptionData, &saveOptionData)
 			}
-			consumer.Commit()
 
 		}
 
@@ -155,32 +161,54 @@ func execute(args interface{}) {
 
 func sync(allOptionData *[]map[string]interface{}, saveOptionData *[]map[string]interface{}) {
 	millisecond := time.Now().UnixNano() / 1e6
-	//	构建es商品数据
-	goodsLists := make(map[string]esGoods)
-	if len(*saveOptionData) > 0 {
-		goodsLists = buildEsGoods(*saveOptionData)
+
+	failedIds := make([]uint32, 0)
+	for _, item := range *allOptionData {
+		goodsId, err := strconv.Atoi(item["goods_id"].(string))
+		if err != nil {
+			exception.Throw("数据同步到ES异常："+err.Error(), 1)
+		}
+		failedIds = append(failedIds, uint32(goodsId))
 	}
 
 	tableName := fmt.Sprintf("z_goods_%s", (*allOptionData)[0]["table_hash"].(string))
-	//	数据更新到es
-	failedIds := pushToElasticsearch(*allOptionData, goodsLists)
-	if len(failedIds) > 0 {
-		models.DB.Table(tableName).
-			Where("id in(?)", failedIds).
-			Update("modify_time", time.Now().Unix()+1)
-	}
 
-	fmt.Printf("%s： %s		成功%d条数据	失败%d条数据		耗时%dms\n",
-		time.Now().Format("2006/01/02 15:04:05.000"),
-		tableName,
-		len(*allOptionData)-len(failedIds),
-		len(failedIds),
-		time.Now().UnixNano()/1e6-millisecond,
-	)
+	exception.Try(func() {
 
-	millisecond = time.Now().UnixNano() / 1e6
-	*allOptionData = (*allOptionData)[0:0]
-	*saveOptionData = (*saveOptionData)[0:0]
+		//	构建es商品数据
+		goodsLists := make(map[string]esGoods)
+		if len(*saveOptionData) > 0 {
+			goodsLists = buildEsGoods(*saveOptionData)
+		}
+
+		//	数据更新到es
+		failedIds = pushToElasticsearch(*allOptionData, goodsLists)
+		if len(failedIds) > 0 {
+			exception.Throw(fmt.Sprintf("ES数据更新%d失败", len(failedIds)), 2)
+		}
+
+	}).Catch(func(ex exception.Exception) {
+		if len(failedIds) > 0 {
+			models.DB.Table(tableName).
+				Where("id in(?)", failedIds).
+				Update("modify_time", time.Now().Unix()+1)
+		}
+		//TODO：删除数据失败
+
+	}).Finally(func() {
+		fmt.Printf("%s： %s		成功%d条数据	失败%d条数据		耗时%dms\n",
+			time.Now().Format("2006/01/02 15:04:05.000"),
+			tableName,
+			len(*allOptionData)-len(failedIds),
+			len(failedIds),
+			time.Now().UnixNano()/1e6-millisecond,
+		)
+
+		millisecond = time.Now().UnixNano() / 1e6
+		*allOptionData = (*allOptionData)[0:0]
+		*saveOptionData = (*saveOptionData)[0:0]
+	})
+
 }
 
 func buildEsGoods(optionDatas []map[string]interface{}) map[string]esGoods {

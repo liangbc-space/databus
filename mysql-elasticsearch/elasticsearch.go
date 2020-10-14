@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/liangbc-space/databus/models"
 	"github.com/liangbc-space/databus/utils"
+	"github.com/liangbc-space/databus/utils/exception"
 	"github.com/olivere/elastic/v7"
 	"reflect"
 	"strconv"
@@ -164,10 +165,6 @@ func (p *esGoods) buildGoodsCategories(categoryIds []string) *esGoods {
 
 	p.initCategory(categories)
 
-	/*test := make([]models.GoodsSubCategory, 0)
-	test = append(test, models.GoodsSubCategory{GoodsCategoryId: 321, GoodsCategoryName: "测试123"})
-	p.initCategory(test)*/
-
 	return p
 
 }
@@ -257,7 +254,7 @@ func (p *esGoods) initCategory(categories interface{}) {
 
 	rValue = reflect.ValueOf(categories)
 	if rValue.Kind() != reflect.Slice && rValue.Kind() != reflect.Array {
-		panic("商品解析出错，categories类型不正确")
+		exception.Throw("商品解析出错，categories类型不正确", 1)
 	}
 
 	for i := 0; i < rValue.Len(); i++ {
@@ -299,9 +296,6 @@ func (p *esGoods) initSearchKeywords() {
 }
 
 func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[string]esGoods) (failedGoodsIds []uint32) {
-	if len(allOptionData) < 1 || len(goodsLists) < 1 {
-		return failedGoodsIds[0:0]
-	}
 
 	bulk := utils.ElasticsearchClient.Bulk()
 	for _, optionData := range allOptionData {
@@ -318,14 +312,13 @@ func pushToElasticsearch(allOptionData []map[string]interface{}, goodsLists map[
 	}
 
 	if bulk.NumberOfActions() > 0 {
-		res, err := bulk.Do(context.TODO())
+		response, err := bulk.Do(context.TODO())
 		if err != nil {
-			panic(err)
+			exception.Throw("写入ES失败："+err.Error(), 1)
 		}
 
-		for _, fail := range res.Failed() {
+		for _, fail := range response.Failed() {
 			if fail.Error != nil {
-				fmt.Println(fail.Id, *fail.Error)
 				goodsId := strings.Split(fail.Id, "-")
 				pkId, _ := strconv.Atoi(goodsId[1])
 				failedGoodsIds = append(failedGoodsIds, uint32(pkId))

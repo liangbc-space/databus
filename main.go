@@ -27,7 +27,7 @@ func init() {
 		//	初始化elasticsearch链接
 		utils.InitElasticsearch()
 	}).Catch(func(ex exception.Exception) {
-		fmt.Printf("程序执行异常：%s	文件：%s:%d\n",
+		fmt.Printf("系统初始化异常：%s	文件：%s:%d\n",
 			ex.Message(), ex.File(), ex.Line(),
 		)
 		os.Exit(ex.Code())
@@ -42,7 +42,10 @@ func main() {
 	exception.Try(func() {
 		mysql_elasticsearch.Run()
 	}).Catch(func(ex exception.Exception) {
-		fmt.Println(ex.Message())
+		fmt.Printf("程序执行异常：%s	文件：%s:%d\n",
+			ex.Message(), ex.File(), ex.Line(),
+		)
+		os.Exit(ex.Code())
 	})
 
 }
