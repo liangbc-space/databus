@@ -22,7 +22,7 @@ import (
 
 func Run() {
 	//	获取topics
-	topics := getTopics()
+	topics := createConsumerInstance().getTopics()
 
 	signalChan := make(chan os.Signal)
 	signal.Notify(signalChan, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -98,8 +98,8 @@ func execute(args interface{}) {
 			}
 			return
 		default:
-			//	获取kafka消息
-			message := pullMessages(consumer)
+			//	获取kafka消息	超时时间100
+			message := consumer.pullMessages(100)
 			if message == nil {
 				if len(allOptionData) > 0 {
 					sync(&allOptionData, &saveOptionData)

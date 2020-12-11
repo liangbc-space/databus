@@ -8,9 +8,22 @@ import (
 	"regexp"
 )
 
-func getTopics() (topics []string) {
+type consumerInstance struct {
+	*utils.ConsumerInstance
+}
 
-	consumer := createConsumerInstance()
+func createConsumerInstance() (consumer consumerInstance) {
+	configMap := utils.ConsumerConfig{}
+	configMap["session.timeout.ms"] = 6000
+	configMap["auto.offset.reset"] = "earliest"
+
+	consumer.ConsumerInstance = new(utils.ConsumerInstance)
+	consumer.Consumer = configMap.ConsumerInstance("binlog-canal-elasticsearch", false)
+
+	return consumer
+}
+
+func (consumer consumerInstance) getTopics() (topics []string) {
 	defer consumer.Close()
 
 	reg := regexp.MustCompile(`^cn01_db.z_goods_(\d{2,3})$`)
@@ -19,9 +32,9 @@ func getTopics() (topics []string) {
 	return topics
 }
 
-func pullMessages(consumer *utils.ConsumerInstance) (messages *kafka.Message) {
+func (consumer consumerInstance) pullMessages(timeoutMs int) (messages *kafka.Message) {
 
-	event := consumer.Poll(100)
+	event := consumer.Poll(timeoutMs)
 	if event == nil {
 		return nil
 	}
@@ -50,15 +63,4 @@ func pullMessages(consumer *utils.ConsumerInstance) (messages *kafka.Message) {
 	}
 
 	return messages
-}
-
-func createConsumerInstance() (consumer *utils.ConsumerInstance) {
-	configMap := utils.ConsumerConfig{}
-	configMap["session.timeout.ms"] = 6000
-	configMap["auto.offset.reset"] = "earliest"
-
-	consumer = new(utils.ConsumerInstance)
-	consumer.Consumer = configMap.ConsumerInstance("binlog-canal-elasticsearch", false)
-
-	return consumer
 }
