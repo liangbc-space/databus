@@ -10,20 +10,22 @@ type SignalControl struct {
 	*sync.WaitGroup
 }
 
-func SignalEvent(signalChan chan os.Signal, signalHandleFuc func(control *SignalControl)) (signalControl *SignalControl) {
-	signalControl = new(SignalControl)
-	signalControl.WaitGroup = new(sync.WaitGroup)
-	signalControl.SignalChan = signalChan
+func NewSignalListener(signalChan chan os.Signal) (listener *SignalControl) {
+	listener = new(SignalControl)
+	listener.WaitGroup = new(sync.WaitGroup)
+	listener.SignalChan = signalChan
+
+	return listener
+}
+
+func (listener *SignalControl) SignalEvent(fn func()) () {
 
 	go func() {
-		signalHandleFuc(signalControl)
+		fn() //调用自定义信号处理方法
 
-		close(signalControl.SignalChan)
+		close(listener.SignalChan)
 
 		return
 
 	}()
-
-	return signalControl
-
 }

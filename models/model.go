@@ -6,7 +6,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/liangbc-space/databus/system"
 	"github.com/liangbc-space/databus/utils"
-	"github.com/liangbc-space/databus/utils/exception"
 	"go.uber.org/zap"
 	"time"
 )
@@ -31,8 +30,6 @@ func InitDB() {
 		defer logger.Sync()
 
 		logger.Panic("初始化MYSQL连接池失败："+err.Error(), zap.String("dsn", dsn))
-
-		exception.Throw("初始化MYSQL连接池失败："+err.Error(), 1)
 	}
 
 	//	全局禁用负数表名

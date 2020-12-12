@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"github.com/liangbc-space/databus/system"
-	"github.com/liangbc-space/databus/utils/exception"
 	"go.uber.org/zap"
 	"reflect"
 	"time"
@@ -55,7 +54,6 @@ func InitRedis() {
 				defer logger.Sync()
 
 				logger.Panic("初始化redis连接池失败："+err.Error(), zap.String("address", address))
-				exception.Throw("初始化redis连接池失败："+err.Error(), 1)
 				return nil, err
 			}
 

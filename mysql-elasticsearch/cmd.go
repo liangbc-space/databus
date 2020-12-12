@@ -27,7 +27,11 @@ func Run() {
 	signalChan := make(chan os.Signal)
 	signal.Notify(signalChan, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	control := utils.SignalEvent(signalChan, signalHandleFunc)
+	listener := utils.NewSignalListener(signalChan)
+	listener.SignalEvent(func() {
+		sig, _ := <-listener.SignalChan
+		fmt.Printf("收到信号【%v】程序退出\n", sig)
+	})
 
 	p, err := ants.NewPoolWithFunc(len(topics), func(args interface{}) {
 		exception.Try(func() {
@@ -44,31 +48,26 @@ func Run() {
 	}
 
 	for _, topic := range topics {
-		control.Add(1)
+		listener.Add(1)
 
 		args := make(map[string]interface{}, 2)
 		args["topic"] = topic
-		args["signal_control"] = control
+		args["signal_listener"] = listener
 
 		if err := p.Invoke(args); err != nil {
 			exception.Throw("协程执行任务失败："+err.Error(), 1)
 		}
 	}
 
-	control.Wait()
+	listener.Wait()
 
-}
-
-func signalHandleFunc(control *utils.SignalControl) {
-	sig, _ := <-control.SignalChan
-	fmt.Printf("收到信号【%v】程序退出\n", sig)
 }
 
 func execute(args interface{}) {
 	argsMap := args.(map[string]interface{})
 
 	topic := argsMap["topic"].(string)
-	control := argsMap["signal_control"].(*utils.SignalControl)
+	control := argsMap["signal_listener"].(*utils.SignalControl)
 	defer control.Done()
 
 	consumer := createConsumerInstance()

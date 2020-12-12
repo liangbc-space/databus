@@ -3,9 +3,7 @@ package utils
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/liangbc-space/databus/system"
-	"github.com/liangbc-space/databus/utils/exception"
 	"go.uber.org/zap"
-	"regexp"
 	"strings"
 )
 
@@ -39,14 +37,16 @@ func (consumerConfig ConsumerConfig) ConsumerInstance(groupId string, autoCommit
 		defer logger.Sync()
 
 		logger.Panic("创建消费者连接失败："+err.Error(), zap.Reflect("connConfig", configMap))
-		exception.Throw("创建消费者连接失败："+err.Error(), 1)
 		return nil
 	}
 
 	return consumer
 }
 
-func (consumer *ConsumerInstance) GetTopics(reg *regexp.Regexp) (topics []string) {
+/**
+获取topic名称列表	自定义topic匹配逻辑
+*/
+func (consumer *ConsumerInstance) GetTopics(fn func(kafka.TopicMetadata) string) (topics []string) {
 	metadata, err := consumer.GetMetadata(nil, true, 100)
 
 	if err != nil {
@@ -54,17 +54,12 @@ func (consumer *ConsumerInstance) GetTopics(reg *regexp.Regexp) (topics []string
 		defer logger.Sync()
 
 		logger.Panic("获取meta信息失败："+err.Error(), zap.String("connInfo", consumer.String()))
-		exception.Throw("获取meta信息失败："+err.Error(), 1)
 		return nil
 	}
 
 	for _, topicMetadata := range metadata.Topics {
-		if reg != nil {
-			if reg.MatchString(topicMetadata.Topic) {
-				topics = append(topics, topicMetadata.Topic)
-			}
-		} else {
-			topics = append(topics, topicMetadata.Topic)
+		if topicName := fn(topicMetadata); topicName != "" {
+			topics = append(topics, topicName)
 		}
 	}
 

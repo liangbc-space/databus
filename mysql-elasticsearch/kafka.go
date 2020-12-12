@@ -27,7 +27,18 @@ func (consumer consumerInstance) getTopics() (topics []string) {
 	defer consumer.Close()
 
 	reg := regexp.MustCompile(`^cn01_db.z_goods_(\d{2,3})$`)
-	topics = consumer.GetTopics(reg)
+
+	topics = consumer.GetTopics(func(metadata kafka.TopicMetadata) string {
+		if reg != nil {
+			if reg.MatchString(metadata.Topic) {
+				return metadata.Topic
+			}
+
+			return ""
+		} else {
+			return metadata.Topic
+		}
+	})
 
 	return topics
 }
